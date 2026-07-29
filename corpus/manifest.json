@@ -1,0 +1,104 @@
+{
+  "schema_version": "1.0",
+  "corpus_version": "demo-2026-07-29",
+  "generated_at": "2026-07-29",
+  "jurisdiction": "PE",
+  "review_status": "requires_human_legal_review",
+  "documents": [
+    {
+      "id": "cpp_consolidado",
+      "journey": "identidad",
+      "title": "Código Procesal Penal consolidado",
+      "publisher": "Diario Oficial El Peruano",
+      "official_url": "https://diariooficial.elperuano.pe/Normas/obtenerDocumento?idNorma=70003",
+      "local_path": "corpus/raw/identidad/codigo_procesal_penal_actualizado.pdf",
+      "sha256": "29ea6ebe1dc6ccced9bc3c455197a2a0b98e1fbc3d7d0a1662df542dc5db8387",
+      "status": "verified_downloaded",
+      "relevant_sections": ["art. 205"],
+      "notes": "Usar el consolidado; registra cambios de la Ley 32130 y del D. Leg. 1574."
+    },
+    {
+      "id": "tc_1039_2025",
+      "journey": "identidad",
+      "title": "Sentencia 1039/2025, Exp. 01356-2024-PHC/TC",
+      "publisher": "Tribunal Constitucional",
+      "official_url": "https://www.tc.gob.pe/jurisprudencia/2025/01356-2024-HC.pdf",
+      "local_path": "corpus/raw/identidad/tc_sentencia_1039_2025.pdf",
+      "sha256": "c909aca96ed126ddbd250f8046df6e48ffca60b4eefcb2a7c349681f1b5e4d3e",
+      "status": "verified_downloaded",
+      "relevant_sections": ["fundamentos sobre art. 205 CPP"],
+      "notes": "Fuente jurisprudencial principal de la demo."
+    },
+    {
+      "id": "protocolo_2018",
+      "journey": "identidad",
+      "title": "Protocolos de Actuación Interinstitucional",
+      "publisher": "Ministerio de Justicia y Derechos Humanos",
+      "official_url": "https://cdn.www.gob.pe/uploads/document/file/1526234/PROTOCOLOS-DE-ACTUACI%C3%93N-INTERINSTITUCIONAL-VERSI%C3%93N-FINAL%20%281%29.pdf.pdf?v=1609857149",
+      "local_path": "corpus/raw/identidad/protocolos_interinstitucionales_2018.pdf",
+      "sha256": "1da8591d2301e37d649c7f9f84bdf27ca1e604d075d98418139799ef62952293",
+      "status": "verified_historical_not_current_alone",
+      "relevant_sections": ["control de identidad policial"],
+      "notes": "Antecedente operativo. La Defensoría indicó que no fue actualizado al art. 205 vigente."
+    },
+    {
+      "id": "defensoria_266",
+      "journey": "identidad",
+      "title": "Informe Defensorial n.° 266",
+      "publisher": "Defensoría del Pueblo",
+      "official_url": "https://www.defensoria.gob.pe/wp-content/uploads/2026/02/Informe-Defensorial-n.%C2%B0-266_Situaci%C3%B3n-de-las-unidades-a-cargo-de-la-prevenci%C3%B3n-del-delito-Supervisi%C3%B3n-Nacional-a-Comisar%C3%ADas-B%C3%A1sicas-de-la-Polic%C3%ADa-Nacional-del-Per%C3%BA.pdf",
+      "local_path": "corpus/raw/identidad/informe_defensorial_266.pdf",
+      "sha256": "1c20edd5edf3244bab6e32cd942e05a70abcc337c2f457535413e9b57142de7e",
+      "status": "verified_downloaded",
+      "relevant_sections": ["control de identidad", "recomendaciones"],
+      "notes": "Evidencia de implementación y de la desactualización del protocolo."
+    },
+    {
+      "id": "codigo_consumidor_consolidado",
+      "journey": "consumo",
+      "title": "Código de Protección y Defensa del Consumidor consolidado",
+      "publisher": "Diario Oficial El Peruano",
+      "official_url": "https://diariooficial.elperuano.pe/Normas/obtenerDocumento?idNorma=17",
+      "local_path": "corpus/raw/consumo/codigo_consumidor_actualizado.pdf",
+      "sha256": "d6f6acd8274b6d54828bf00885f7d0076a83ad6961afbad228beaf1cab4aeb9b",
+      "status": "verified_downloaded",
+      "relevant_sections": ["arts. 18-20", "art. 24", "arts. 150-152"],
+      "notes": "Incluye modificaciones vigentes al corte del documento."
+    },
+    {
+      "id": "datos_personales_reglamento",
+      "journey": "cumplimiento",
+      "title": "Reglamento de la Ley 29733",
+      "publisher": "Ministerio de Justicia y Derechos Humanos",
+      "official_url": "https://cdn.www.gob.pe/uploads/document/file/7568330/6426760-decreto-supremo-n-016-2024-jus-reglamento-de-la-ley-n-29733-ley-de-proteccion-de-datos-personales-publicado-nov-2024.pdf",
+      "local_path": "corpus/raw/cumplimiento/ds_016_2024_jus_datos_personales.pdf",
+      "sha256": "7c538dd4e5af0f47a5d3b4a45fd896479e444f1e2eb85cbca8117c3047658b9d",
+      "status": "verified_downloaded",
+      "relevant_sections": ["principios", "consentimiento", "seguridad", "derechos"],
+      "notes": "Obligatorio para diseñar carga de audio, imagen y relatos."
+    },
+    {
+      "id": "ia_reglamento",
+      "journey": "cumplimiento",
+      "title": "Reglamento de la Ley 31814",
+      "publisher": "Presidencia del Consejo de Ministros",
+      "official_url": "https://www.gob.pe/institucion/pcm/normas-legales/7133522-115-2025-pcm",
+      "local_path": "corpus/raw/cumplimiento/ds_115_2025_pcm_ia.pdf",
+      "sha256": "0b1f6dc7493a6de2a04b3033bd260e64473a70dd43b4eba4a128a49d0b5ced95",
+      "status": "verified_downloaded",
+      "relevant_sections": ["transparencia", "supervisión humana", "privacidad"],
+      "notes": "Base de cumplimiento para el uso de IA."
+    }
+  ],
+  "known_missing": [
+    "Ley 32130",
+    "Decreto Legislativo 1574",
+    "Ley 32495",
+    "Resolución Ministerial 244-2026-PCM y eventual norma final",
+    "Reglamento consolidado del Libro de Reclamaciones",
+    "Constitución Política del Perú",
+    "Nuevo Código Procesal Constitucional",
+    "Directiva 001-2021/COD-INDECOPI revisada manualmente"
+  ]
+}
+

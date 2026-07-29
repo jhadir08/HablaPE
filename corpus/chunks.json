@@ -1,0 +1,78 @@
+{
+  "schema_version": "1.0",
+  "corpus_version": "demo-2026-07-29",
+  "review_status": "requires_human_legal_review",
+  "chunks": [
+    {
+      "id": "identidad_cpp_205_1",
+      "document_id": "cpp_consolidado",
+      "journey": "identidad",
+      "locator": "art. 205.1",
+      "rule_type": "habilitante",
+      "plain_rule": "La Policía puede requerir la identificación sin orden fiscal o judicial únicamente para prevenir un delito u obtener información útil para averiguar un hecho punible.",
+      "source_kind": "official_consolidated_law",
+      "is_synthetic": false
+    },
+    {
+      "id": "identidad_cpp_205_2",
+      "document_id": "cpp_consolidado",
+      "journey": "identidad",
+      "locator": "art. 205.2",
+      "rule_type": "garantia",
+      "plain_rule": "La identificación debe realizarse en el lugar y deben darse facilidades para encontrar y exhibir el documento.",
+      "source_kind": "official_consolidated_law",
+      "is_synthetic": false
+    },
+    {
+      "id": "identidad_cpp_205_4",
+      "document_id": "cpp_consolidado",
+      "journey": "identidad",
+      "locator": "art. 205.4",
+      "rule_type": "plazo_y_garantia",
+      "plain_rule": "Si no es posible identificar a una persona, su traslado es excepcional; para nacionales el límite indicado es cuatro horas y no corresponde ingresarla a celdas.",
+      "source_kind": "official_consolidated_law",
+      "is_synthetic": false
+    },
+    {
+      "id": "identidad_tc_1039",
+      "document_id": "tc_1039_2025",
+      "journey": "identidad",
+      "locator": "fundamentos sobre control de identidad",
+      "rule_type": "interpretacion",
+      "plain_rule": "El Tribunal Constitucional remarca que el control de identidad no es discrecional y necesita presupuestos objetivos vinculados a los supuestos del artículo 205.",
+      "source_kind": "official_case_law",
+      "is_synthetic": false
+    },
+    {
+      "id": "consumo_idoneidad_18_19",
+      "document_id": "codigo_consumidor_consolidado",
+      "journey": "consumo",
+      "locator": "arts. 18-19",
+      "rule_type": "idoneidad",
+      "plain_rule": "El producto o servicio debe corresponder con lo ofrecido y con lo que razonablemente espera el consumidor.",
+      "source_kind": "official_consolidated_law",
+      "is_synthetic": false
+    },
+    {
+      "id": "consumo_respuesta_24",
+      "document_id": "codigo_consumidor_consolidado",
+      "journey": "consumo",
+      "locator": "art. 24.1",
+      "rule_type": "plazo",
+      "plain_rule": "El proveedor debe atender los reclamos en un plazo máximo de quince días hábiles.",
+      "source_kind": "official_consolidated_law",
+      "is_synthetic": false
+    },
+    {
+      "id": "consumo_libro_150_151",
+      "document_id": "codigo_consumidor_consolidado",
+      "journey": "consumo",
+      "locator": "arts. 150-151",
+      "rule_type": "canal",
+      "plain_rule": "Los establecimientos y las plataformas digitales comprendidas deben contar con un Libro de Reclamaciones accesible.",
+      "source_kind": "official_consolidated_law",
+      "is_synthetic": false
+    }
+  ]
+}
+

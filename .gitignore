@@ -1,0 +1,8 @@
+tmp/
+demo/node_modules/
+demo/.next/
+demo/dist/
+demo/.wrangler/
+demo/.open-next/
+*.log
+
