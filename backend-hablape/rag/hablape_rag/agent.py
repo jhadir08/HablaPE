@@ -149,6 +149,38 @@ def _clean_model_text(value: str) -> str:
     return "\n".join(unique_lines).strip()
 
 
+def _journey_hint(text: str) -> str:
+    value = _fold(text)
+    if any(
+        marker in value
+        for marker in (
+            "policia",
+            "comisaria",
+            "control de identidad",
+            "dni",
+            "imei",
+            "celular",
+            "detener",
+            "retener",
+        )
+    ):
+        return "identidad"
+    if any(
+        marker in value
+        for marker in (
+            "indecopi",
+            "reclamo",
+            "garantia",
+            "libro de reclamaciones",
+            "producto defectuoso",
+            "proveedor",
+            "consumidor",
+        )
+    ):
+        return "consumo"
+    return "general"
+
+
 def _json_object(value: str) -> dict[str, Any] | None:
     match = re.search(r"\{.*\}", value, flags=re.DOTALL)
     if not match:
@@ -204,20 +236,20 @@ def _fallback_route(question: str) -> dict[str, str]:
     if _unsafe_request(question):
         return {
             "mode": "blocked",
-            "journey": "general",
+            "journey": _journey_hint(question),
             "retrieval_query": question,
             "reason": "Solicitud potencialmente dañina.",
         }
     if _needs_official_grounding(question):
         return {
             "mode": "rag",
-            "journey": "general",
+            "journey": _journey_hint(question),
             "retrieval_query": question,
             "reason": "La consulta requiere respaldo oficial verificable.",
         }
     return {
         "mode": "direct",
-        "journey": "general",
+        "journey": _journey_hint(question),
         "retrieval_query": question,
         "reason": "La consulta puede responderse sin afirmar reglas jurídicas.",
     }
@@ -311,6 +343,15 @@ def build_hablape_graph(
                 }
             }
         question = state.get("normalized_question") or state.get("question", "")
+        fallback = _fallback_route(question)
+        # For the two supported legal journeys, the deterministic safety gate
+        # would force RAG even if the model chose direct. Skip that redundant
+        # routing inference and save one endpoint round trip.
+        if fallback["mode"] == "blocked" or (
+            fallback["mode"] == "rag"
+            and fallback["journey"] in {"identidad", "consumo"}
+        ):
+            return {"route": fallback}
         messages = [
             SystemMessage(
                 content=(
@@ -449,21 +490,18 @@ def build_hablape_graph(
             ]
         try:
             generated = _answer_payload(_response_text(model.invoke(messages)))
-            if not _usable_answer(generated):
-                if mode == "rag":
-                    retry_prompt = (
-                        "Redacta únicamente una explicación ciudadana clara de "
-                        "80 a 160 palabras usando los fragmentos oficiales. No "
-                        "devuelvas JSON, etiquetas, metadatos ni copies los "
-                        "fragmentos completos. Si falta información, indícalo.\n\n"
-                        f"<CONSULTA>\n{question}\n</CONSULTA>\n\n{context}"
-                    )
-                else:
-                    retry_prompt = (
-                        "Responde únicamente con una explicación breve y natural. "
-                        "No devuelvas JSON ni repitas estas instrucciones.\n\n"
-                        f"PREGUNTA:\n{question}"
-                    )
+            if (
+                not _usable_answer(generated)
+                and mode == "rag"
+                and not state.get("media")
+            ):
+                retry_prompt = (
+                    "Redacta únicamente una explicación ciudadana clara de "
+                    "80 a 160 palabras usando los fragmentos oficiales. No "
+                    "devuelvas JSON, etiquetas, metadatos ni copies los "
+                    "fragmentos completos. Si falta información, indícalo.\n\n"
+                    f"<CONSULTA>\n{question}\n</CONSULTA>\n\n{context}"
+                )
                 generated = _answer_payload(
                     _response_text(
                         model.invoke([HumanMessage(content=retry_prompt)])

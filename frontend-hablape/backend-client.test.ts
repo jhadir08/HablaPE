@@ -136,6 +136,19 @@ test("propagates the backend error contract without leaking response details", a
   );
 });
 
+test("reports an aborted backend request as a clear timeout", async () => {
+  const controller = new AbortController();
+  controller.abort();
+
+  await assert.rejects(
+    requestBackend("/v1/orientations", { signal: controller.signal }),
+    (error: unknown) =>
+      error instanceof BackendRequestError
+      && error.status === 504
+      && error.code === "backend_timeout",
+  );
+});
+
 test("preserves binary audio and its media type for Speech-to-Text", async () => {
   const audio = Buffer.from([0x1a, 0x45, 0xdf, 0xa3]);
   const result = await requestBackend<BackendTranscription>("/v1/transcriptions", {

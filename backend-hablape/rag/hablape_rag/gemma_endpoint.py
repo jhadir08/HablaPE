@@ -29,6 +29,7 @@ class GemmaVertexEndpoint(BaseChatModel):
     media_schema: str = "auto"
     temperature: float = 0.0
     max_output_tokens: int = 1024
+    prediction_timeout_seconds: float = 30.0
 
     @property
     def _llm_type(self) -> str:
@@ -99,7 +100,10 @@ class GemmaVertexEndpoint(BaseChatModel):
                     self._media_payload(prompt, media, schema=media_schema)
                 )
             try:
-                response = endpoint.predict(instances=[candidate])
+                response = endpoint.predict(
+                    instances=[candidate],
+                    timeout=self.prediction_timeout_seconds,
+                )
                 break
             except Exception as exc:
                 last_error = exc

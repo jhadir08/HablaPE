@@ -120,6 +120,8 @@ export HABLAPE_MODEL_PROVIDER=agent
 export HABLAPE_GEMMA_ENDPOINT_ID=REEMPLAZAR_CON_ENDPOINT_ID
 export HABLAPE_GEMMA_REQUEST_SCHEMA=prompt
 export HABLAPE_GEMMA_MEDIA_SCHEMA=auto
+export HABLAPE_GEMMA_TIMEOUT_SECONDS=30
+export HABLAPE_GEMMA_MAX_OUTPUT_TOKENS=512
 export HABLAPE_VECTOR_COLLECTION_ID=hablape-corpus
 export HABLAPE_SPEECH_LOCATION=us
 export HABLAPE_SPEECH_MODEL=chirp_3
@@ -132,8 +134,10 @@ El ID de endpoint no es una clave secreta. El backend construye la URL regional
 de predicción y se autentica mediante su cuenta de servicio. Esa cuenta necesita
 `roles/aiplatform.user`, `roles/vectorsearch.viewer`,
 `roles/cloudtranslate.user` y `roles/speech.client`. El script habilita Vertex
-AI, Vector Search, Cloud Translation y Speech-to-Text. En modo `agent`, Gemma decide entre respuesta directa y RAG; las
-cuestiones jurídicas recuperan evidencia de Vector Search. La interfaz admite
+AI, Vector Search, Cloud Translation y Speech-to-Text. En modo `agent`, Gemma
+decide entre respuesta directa y RAG; el control de seguridad envía directamente
+a RAG las consultas jurídicas evidentes de los recorridos soportados, evitando
+una inferencia redundante. La interfaz admite
 `es`, `en`, `qu` y `ay`; la normativa oficial se muestra sin traducir.
 
 Para una prueba local sin GCP todavía puede usarse
@@ -150,6 +154,8 @@ HABLAPE_FRONTEND_SERVICE_ACCOUNT=hablape-web
 HABLAPE_TRACE_PROVIDER=memory|firestore
 HABLAPE_GEMMA_REQUEST_SCHEMA=prompt|vllm
 HABLAPE_GEMMA_MEDIA_SCHEMA=auto|gemma4|inline_data
+HABLAPE_GEMMA_TIMEOUT_SECONDS=30
+HABLAPE_GEMMA_MAX_OUTPUT_TOKENS=512
 HABLAPE_VECTOR_COLLECTION_ID=hablape-corpus
 HABLAPE_RAG_TOP_K=6
 HABLAPE_SPEECH_LOCATION=us

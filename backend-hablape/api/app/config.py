@@ -38,6 +38,8 @@ class Settings:
     gemma_endpoint_id: str | None
     gemma_request_schema: str
     gemma_media_schema: str
+    gemma_prediction_timeout_seconds: float
+    gemma_max_output_tokens: int
     vector_collection_id: str
     rag_top_k: int
     speech_location: str
@@ -63,6 +65,12 @@ class Settings:
         gemma_media_schema = os.getenv(
             "HABLAPE_GEMMA_MEDIA_SCHEMA", "auto"
         ).lower()
+        gemma_prediction_timeout_seconds = float(
+            os.getenv("HABLAPE_GEMMA_TIMEOUT_SECONDS", "30")
+        )
+        gemma_max_output_tokens = int(
+            os.getenv("HABLAPE_GEMMA_MAX_OUTPUT_TOKENS", "512")
+        )
         rag_top_k = int(os.getenv("HABLAPE_RAG_TOP_K", "6"))
 
         if environment not in {"local", "test", "production"}:
@@ -82,6 +90,14 @@ class Settings:
         if gemma_media_schema not in {"auto", "gemma4", "inline_data"}:
             raise ValueError(
                 "HABLAPE_GEMMA_MEDIA_SCHEMA debe ser auto, gemma4 o inline_data."
+            )
+        if not 5 <= gemma_prediction_timeout_seconds <= 90:
+            raise ValueError(
+                "HABLAPE_GEMMA_TIMEOUT_SECONDS debe estar entre 5 y 90."
+            )
+        if not 128 <= gemma_max_output_tokens <= 2048:
+            raise ValueError(
+                "HABLAPE_GEMMA_MAX_OUTPUT_TOKENS debe estar entre 128 y 2048."
             )
         if not 1 <= rag_top_k <= 20:
             raise ValueError("HABLAPE_RAG_TOP_K debe estar entre 1 y 20.")
@@ -127,6 +143,8 @@ class Settings:
             ),
             gemma_request_schema=gemma_request_schema,
             gemma_media_schema=gemma_media_schema,
+            gemma_prediction_timeout_seconds=gemma_prediction_timeout_seconds,
+            gemma_max_output_tokens=gemma_max_output_tokens,
             vector_collection_id=os.getenv(
                 "HABLAPE_VECTOR_COLLECTION_ID", "hablape-corpus"
             ),

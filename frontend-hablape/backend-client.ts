@@ -136,6 +136,16 @@ export async function requestBackend<T>(
       signal: init.signal ?? AbortSignal.timeout(90_000),
     });
   } catch (error) {
+    if (
+      error instanceof Error
+      && (error.name === "TimeoutError" || error.name === "AbortError")
+    ) {
+      throw new BackendRequestError(
+        "El análisis tardó más de lo permitido. Intenta nuevamente en unos segundos.",
+        504,
+        "backend_timeout",
+      );
+    }
     const detail = error instanceof Error ? error.message : "error de red";
     throw new BackendRequestError(
       `No se pudo contactar al backend de HablaPE: ${detail}`,

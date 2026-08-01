@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from langchain_core.documents import Document
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 
 from hablape_rag.agent import build_hablape_graph
 from hablape_rag.gemma_endpoint import GemmaVertexEndpoint, MediaPart
@@ -11,8 +11,10 @@ class FakeModel:
     def __init__(self, responses: list[str], multimodal: str = "") -> None:
         self._responses = iter(responses)
         self._multimodal = multimodal
+        self.calls = 0
 
     def invoke(self, _messages):
+        self.calls += 1
         return AIMessage(content=next(self._responses))
 
     def invoke_multimodal(self, _messages, _media):
@@ -65,8 +67,6 @@ def test_police_imei_question_forces_grounded_rag_and_backend_citations() -> Non
     store = FakeVectorStore([official_document()])
     model = FakeModel(
         [
-            # Even if the model under-routes, the legal safety gate requires RAG.
-            '{"mode":"direct","journey":"identidad","reason":"general"}',
             "La evidencia recuperada no autoriza a exceder esos límites.",
         ]
     )
@@ -80,13 +80,13 @@ def test_police_imei_question_forces_grounded_rag_and_backend_citations() -> Non
     assert result["answer"]["chunk_ids"] == ["chk-imei"]
     assert len(store.calls) == 1
     assert store.calls[0]["filter"] == {"is_official": {"$eq": True}}
+    assert model.calls == 1
 
 
 def test_structured_rag_answer_keeps_actions_separate_from_explanation() -> None:
     store = FakeVectorStore([official_document()])
     model = FakeModel(
         [
-            '{"mode":"rag","journey":"identidad","reason":"regla oficial"}',
             (
                 '{"explanation":"Puedes pedir que te indiquen el motivo del '
                 'control.","next_actions":["Pregunta el motivo con calma."]}'
@@ -96,7 +96,10 @@ def test_structured_rag_answer_keeps_actions_separate_from_explanation() -> None
     graph = build_hablape_graph(vector_store=store, model=model, top_k=2)
 
     result = graph.invoke(
-        {"question": "¿Qué puedo hacer durante el control?", "media": []}
+        {
+            "question": "¿Qué puedo hacer durante el control de identidad policial?",
+            "media": [],
+        }
     )
 
     assert result["answer"]["mode"] == "rag"
@@ -110,7 +113,6 @@ def test_internal_rag_context_is_never_returned_as_an_explanation() -> None:
     store = FakeVectorStore([official_document()])
     model = FakeModel(
         [
-            '{"mode":"rag","journey":"identidad","reason":"regla oficial"}',
             "CHUNK_ID=chk-imei TÍTULO=Norma LOCALIZADOR=Artículo 1 texto crudo",
             "CHUNK_ID=chk-imei TÍTULO=Norma LOCALIZADOR=Artículo 1 texto crudo",
         ]
@@ -133,7 +135,6 @@ def test_rag_generation_retries_after_an_invalid_first_completion() -> None:
     store = FakeVectorStore([official_document()])
     model = FakeModel(
         [
-            '{"mode":"rag","journey":"identidad","reason":"regla oficial"}',
             "CHUNK_ID=chk-imei texto interno",
             "Puedes pedir que te expliquen el motivo y alcance de la intervención.",
         ]
@@ -157,7 +158,6 @@ def test_transformed_prompt_echo_is_cut_after_the_last_evidence_tag() -> None:
     )
     model = FakeModel(
         [
-            '{"mode":"rag","journey":"identidad","reason":"regla oficial"}',
             echoed,
         ]
     )
@@ -177,7 +177,6 @@ def test_rag_post_filters_synthetic_documents_without_compound_filter() -> None:
     store = FakeVectorStore([synthetic, official_document("chk-official")])
     model = FakeModel(
         [
-            '{"mode":"rag","journey":"identidad","reason":"regla oficial"}',
             "Respuesta limitada al documento oficial.",
         ]
     )
@@ -198,9 +197,7 @@ def test_vector_search_failure_is_reported_instead_of_hidden() -> None:
         def similarity_search(self, _query: str, **_kwargs):
             raise RuntimeError("permission denied")
 
-    model = FakeModel(
-        ['{"mode":"rag","journey":"identidad","reason":"regla oficial"}']
-    )
+    model = FakeModel([])
     graph = build_hablape_graph(
         vector_store=FailingVectorStore(),
         model=model,
@@ -282,3 +279,36 @@ def test_vertex_adapter_removes_an_echoed_prompt() -> None:
 
     assert cleaned == completion
     assert cleaned_with_template == completion
+
+
+def test_vertex_prediction_uses_a_bounded_timeout(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class FakePrediction:
+        predictions = ["Respuesta breve"]
+
+    class FakeEndpoint:
+        def __init__(self, **kwargs):
+            captured["endpoint"] = kwargs
+
+        def predict(self, *, instances, timeout):
+            captured["instances"] = instances
+            captured["timeout"] = timeout
+            return FakePrediction()
+
+    monkeypatch.setattr(
+        "hablape_rag.gemma_endpoint.aiplatform.Endpoint",
+        FakeEndpoint,
+    )
+    model = GemmaVertexEndpoint(
+        project_id="project-test",
+        location="us-central1",
+        endpoint_id="endpoint-test",
+        request_schema="prompt",
+        prediction_timeout_seconds=12.5,
+    )
+
+    response = model.invoke([HumanMessage(content="Hola")])
+
+    assert response.content == "Respuesta breve"
+    assert captured["timeout"] == 12.5

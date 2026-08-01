@@ -481,7 +481,10 @@ def build_adaptive_orchestrator(
         request_schema=settings.gemma_request_schema,
         media_schema=settings.gemma_media_schema,
         temperature=0.1,
-        max_output_tokens=1200,
+        max_output_tokens=settings.gemma_max_output_tokens,
+        prediction_timeout_seconds=(
+            settings.gemma_prediction_timeout_seconds
+        ),
     )
     graph = build_hablape_graph(
         vector_store=store,
