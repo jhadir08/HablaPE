@@ -25,7 +25,8 @@ $image = "$Region-docker.pkg.dev/$ProjectId/$Repository/api"
 $runtimeEmail = "$RuntimeServiceAccount@$ProjectId.iam.gserviceaccount.com"
 
 gcloud builds submit $repoRoot `
-    --tag $image `
+    --config (Join-Path $repoRoot 'cloudbuild.api.yaml') `
+    --substitutions="_IMAGE=$image" `
     --project $ProjectId `
     --quiet
 

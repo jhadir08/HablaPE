@@ -22,6 +22,7 @@ export interface LegalReference {
   version: string;
   publishedDate: string;
   isVigente: boolean;
+  chunkId?: string;
 }
 
 export interface DerivationChannel {
@@ -69,6 +70,17 @@ export interface QueryResponse {
   derivationChannels: DerivationChannel[];
   limitations: string;
   pipelineTrace: PipelineStep[];
+  backendMeta?: {
+    apiVersion: string;
+    corpusVersion: string;
+    modelProvider: string;
+    validations: Array<{ name: string; passed: boolean; reason: string }>;
+    privacy: {
+      possible_personal_data: string[];
+      raw_input_persisted: boolean;
+      retention: string;
+    };
+  };
 }
 
 export interface CorpusArticle {

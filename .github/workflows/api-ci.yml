@@ -3,16 +3,20 @@ name: API CI
 on:
   pull_request:
     paths:
-      - "api/**"
-      - "corpus/**"
-      - "eval/**"
+      - "backend-hablape/api/**"
+      - "backend-hablape/corpus/**"
+      - "backend-hablape/eval/**"
+      - "backend-hablape/cloudbuild.api.yaml"
+      - "frontend-hablape/**"
       - ".github/workflows/api-ci.yml"
   push:
     branches: [main]
     paths:
-      - "api/**"
-      - "corpus/**"
-      - "eval/**"
+      - "backend-hablape/api/**"
+      - "backend-hablape/corpus/**"
+      - "backend-hablape/eval/**"
+      - "backend-hablape/cloudbuild.api.yaml"
+      - "frontend-hablape/**"
       - ".github/workflows/api-ci.yml"
 
 permissions:
@@ -23,21 +27,21 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: api
+        working-directory: backend-hablape/api
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: api/requirements.txt
+          cache-dependency-path: backend-hablape/api/requirements.txt
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -r requirements.txt pip-audit
       - run: pip-audit -r requirements.txt
       - run: python -m compileall -q app
       - run: python -m unittest discover -s tests -v
         env:
-          PYTHONPATH: ${{ github.workspace }}/api
+          PYTHONPATH: ${{ github.workspace }}/backend-hablape/api
           HABLAPE_ENV: test
           HABLAPE_MODEL_PROVIDER: rules
           HABLAPE_TRACE_PROVIDER: memory
@@ -46,4 +50,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -f api/Dockerfile -t hablape-api:test .
+      - run: docker build -f backend-hablape/api/Dockerfile -t hablape-api:test backend-hablape
+      - run: docker build -f frontend-hablape/Dockerfile -t hablape-web:test frontend-hablape
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend-hablape
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend-hablape/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint
+      - run: npm run build

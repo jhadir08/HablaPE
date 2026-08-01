@@ -1,13 +1,30 @@
+import "dotenv/config";
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import { LEGAL_CORPUS, FREQUENT_SCENARIOS } from "./src/data/legalCorpus.js";
+import {
+  adaptOrientationForFrontend,
+  BackendOrientation,
+  BackendRequestError,
+  requestBackend,
+} from "./backend-client.js";
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT || 3000);
 
-app.use(express.json({ limit: "25mb" }));
+app.disable("x-powered-by");
+app.use(express.json({ limit: "1mb" }));
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("Permissions-Policy", "camera=(), geolocation=()");
+  if (req.path.startsWith("/api/")) {
+    res.setHeader("Cache-Control", "no-store");
+  }
+  next();
+});
 
 // Initialize Gemini Client
 function getGeminiClient() {
@@ -27,9 +44,25 @@ function getGeminiClient() {
 
 // API Routes
 
-// Health check
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", app: "HablaPE", version: "1.0.0" });
+// Health check including the private FastAPI dependency.
+app.get("/api/health", async (_req, res) => {
+  try {
+    const backend = await requestBackend<Record<string, unknown>>("/health/ready");
+    res.json({
+      status: "ready",
+      app: "HablaPE",
+      version: "1.0.0",
+      backend,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Backend no disponible";
+    res.status(503).json({
+      status: "not_ready",
+      app: "HablaPE",
+      version: "1.0.0",
+      backend: { error: message },
+    });
+  }
 });
 
 // Get Legal Corpus
@@ -60,8 +93,101 @@ app.get("/api/scenarios", (_req, res) => {
   res.json({ success: true, data: FREQUENT_SCENARIOS });
 });
 
-// Main Multimodal Query Endpoint
+// Browser -> same-origin Express BFF -> private FastAPI Cloud Run service.
 app.post("/api/query", async (req, res) => {
+  const { text, mode = "text", fileName, consentToProcess } = req.body ?? {};
+
+  if (mode !== "text") {
+    return res.status(501).json({
+      success: false,
+      error: {
+        code: "input_mode_not_ready",
+        message: (
+          "La conexión Cloud Run está habilitada inicialmente para texto. " +
+          "Audio e imagen requieren Speech-to-Text o Document AI."
+        ),
+      },
+    });
+  }
+  if (consentToProcess !== true) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: "consent_required",
+        message: "Debes aceptar el procesamiento temporal del relato.",
+      },
+    });
+  }
+  if (typeof text !== "string" || text.trim().length < 4) {
+    return res.status(422).json({
+      success: false,
+      error: {
+        code: "invalid_text",
+        message: "Escribe una consulta de al menos cuatro caracteres.",
+      },
+    });
+  }
+  if (text.length > 4_000) {
+    return res.status(413).json({
+      success: false,
+      error: {
+        code: "text_too_long",
+        message: "La consulta supera el máximo de 4000 caracteres.",
+      },
+    });
+  }
+
+  try {
+    const orientation = await requestBackend<BackendOrientation>(
+      "/v1/orientations",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          text: text.trim(),
+          channel: "text",
+          confirmed_facts: {},
+          consent_to_process: true,
+          is_synthetic: false,
+        }),
+      },
+    );
+    return res.json(
+      adaptOrientationForFrontend(orientation, {
+        text: text.trim(),
+        mode,
+        fileName: typeof fileName === "string" ? fileName : undefined,
+      }),
+    );
+  } catch (error) {
+    if (error instanceof BackendRequestError) {
+      console.error(
+        `[HablaPE BFF] backend_error status=${error.status} code=${error.code} request_id=${error.requestId || "-"}`,
+      );
+      return res.status(error.status).json({
+        success: false,
+        error: {
+          code: error.code,
+          message: error.message,
+          requestId: error.requestId,
+        },
+      });
+    }
+    console.error("[HablaPE BFF] unexpected_backend_error");
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "internal_error",
+        message: "No se pudo procesar la consulta.",
+      },
+    });
+  }
+});
+
+// Legacy AI Studio route. Disabled unless explicitly enabled for isolated demos.
+app.post("/api/query-legacy", async (req, res) => {
+  if (process.env.HABLAPE_ENABLE_LEGACY_AI !== "true") {
+    return res.status(404).json({ error: "Legacy route disabled" });
+  }
   const timestamp = new Date().toISOString();
   const pipelineTrace: any[] = [];
 

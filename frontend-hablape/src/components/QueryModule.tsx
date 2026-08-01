@@ -63,6 +63,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
   const [playingPhraseIndex, setPlayingPhraseIndex] = useState<number | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [hasConsent, setHasConsent] = useState(false);
 
   const quickPrompts = [
     'Me pararon en la calle y no llevo mi DNI físico',
@@ -136,6 +137,10 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
     if (!textQuery.trim() && !audioBase64 && !filePreview) {
       return;
     }
+    if (!hasConsent) {
+      setErrorMessage('Debes aceptar el procesamiento temporal de tu relato antes de continuar.');
+      return;
+    }
 
     setIsLoading(true);
     setErrorMessage(null);
@@ -168,14 +173,18 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
           mode: inputMode,
           audioBase64: audioBase64,
           imageBase64: filePreview,
-          fileName: selectedFile?.name
+          fileName: selectedFile?.name,
+          consentToProcess: hasConsent
         })
       });
 
       clearInterval(stepInterval);
 
       if (!response.ok) {
-        throw new Error('Error al procesar la consulta con el servidor');
+        const payload = await response.json().catch(() => null);
+        throw new Error(
+          payload?.error?.message || 'Error al procesar la consulta con el servidor'
+        );
       }
 
       const data: QueryResponse = await response.json();
@@ -183,7 +192,11 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
     } catch (err: any) {
       console.error('Query error:', err);
       clearInterval(stepInterval);
-      setErrorMessage('Ocurrió un error al procesar tu consulta. Intenta nuevamente.');
+      setErrorMessage(
+        err instanceof Error
+          ? err.message
+          : 'Ocurrió un error al procesar tu consulta. Intenta nuevamente.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -554,6 +567,19 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
             </div>
           )}
 
+          <label className="flex items-start gap-3 p-3 bg-sky-50/70 border border-sky-200 rounded-xl cursor-pointer">
+            <input
+              type="checkbox"
+              checked={hasConsent}
+              onChange={(event) => setHasConsent(event.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-sky-600"
+            />
+            <span className="text-xs leading-relaxed text-slate-700">
+              Acepto que HablaPE procese temporalmente mi relato para generar esta orientación.
+              El backend no persiste el texto completo y registra solamente metadatos técnicos.
+            </span>
+          </label>
+
           {/* Error Message */}
           {errorMessage && (
             <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-xl flex items-center gap-2">
@@ -571,7 +597,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
 
             <button
               onClick={() => handleSubmit()}
-              disabled={isLoading || (!inputText.trim() && !audioBase64 && !filePreview)}
+              disabled={isLoading || !hasConsent || (!inputText.trim() && !audioBase64 && !filePreview)}
               className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs md:text-sm flex items-center justify-center gap-2 shadow-md transition-all hover:scale-[1.01] cursor-pointer"
             >
               {isLoading ? (
@@ -700,7 +726,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
               <div className="p-4 bg-emerald-50/60 border border-emerald-200/80 rounded-xl space-y-2">
                 <h4 className="text-xs font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  Tus Derechos Fundamentales
+                  Reglas oficiales aplicables
                 </h4>
                 <ul className="space-y-1.5 text-xs text-slate-700">
                   {queryResult.explanation.citizenRights.map((item, idx) => (
@@ -712,21 +738,22 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
                 </ul>
               </div>
 
-              {/* What Police CANNOT Do (Crucial protection) */}
-              <div className="p-4 bg-amber-50/60 border border-amber-200/80 rounded-xl space-y-2">
-                <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider flex items-center gap-2">
-                  <ShieldAlert className="w-4 h-4 text-amber-600" />
-                  Lo que la Policía NO Puede Hacer
-                </h4>
-                <ul className="space-y-1.5 text-xs text-slate-700">
-                  {queryResult.explanation.whatPoliceCannotDo.map((item, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <span className="text-amber-600 font-bold">•</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              {queryResult.explanation.whatPoliceCannotDo.length > 0 && (
+                <div className="p-4 bg-amber-50/60 border border-amber-200/80 rounded-xl space-y-2">
+                  <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-amber-600" />
+                    Lo que la Policía NO Puede Hacer
+                  </h4>
+                  <ul className="space-y-1.5 text-xs text-slate-700">
+                    {queryResult.explanation.whatPoliceCannotDo.map((item, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="text-amber-600 font-bold">•</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
             {/* Action Plan */}
@@ -747,7 +774,48 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
             </div>
           </div>
 
+          {/* Sources stay separate from the generated explanation. */}
+          {queryResult.legalReferences.length > 0 && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-sky-600" />
+                  Fuentes utilizadas por el backend
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Estas referencias provienen del corpus aprobado; no fueron elegidas por el modelo generativo.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {queryResult.legalReferences.map((reference, index) => (
+                  <article key={`${reference.document}-${reference.article}-${index}`} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                    <p className="text-xs font-bold text-slate-900">{reference.document}</p>
+                    <p className="text-[11px] font-semibold text-sky-700">{reference.article}</p>
+                    <p className="text-[11px] leading-relaxed text-slate-600">{reference.summary}</p>
+                    {reference.officialUrl && (
+                      <a
+                        href={reference.officialUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-700 hover:text-sky-900"
+                      >
+                        Abrir fuente oficial
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+            <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+            <p className="text-xs leading-relaxed text-amber-900">{queryResult.limitations}</p>
+          </div>
+
           {/* Suggested Phrases with Audio */}
+          {queryResult.suggestedPhrases.length > 0 && (
           <div className="bg-gradient-to-br from-slate-900 to-slate-950 text-white border border-slate-800 rounded-2xl p-6 shadow-md space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -794,6 +862,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
               ))}
             </div>
           </div>
+          )}
         </div>
       )}
 
