@@ -1,0 +1,10 @@
+google-api-python-client>=2.180,<3
+google-cloud-aiplatform>=1.163,<2
+google-cloud-documentai>=3.15,<4
+google-cloud-storage>=3.3,<4
+langchain>=1.0,<2
+langchain-google-vertexai>=3.2,<4
+langgraph>=1.0,<2
+pydantic>=2.11,<3
+pytest>=8.4,<9
+

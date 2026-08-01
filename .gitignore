@@ -5,4 +5,14 @@ demo/dist/
 demo/.wrangler/
 demo/.open-next/
 *.log
+.env
+.env.*
+!.env.example
+**/__pycache__/
+*.py[cod]
+.venv/
+api/.venv/
+.gcloud/
+*service-account*.json
+gcp-key*.json
 
