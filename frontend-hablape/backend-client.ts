@@ -191,6 +191,7 @@ export function adaptOrientationForFrontend(
   const usesRag = orientation.answer_mode === "rag_gemma";
   const isBlocked = orientation.answer_mode === "blocked";
   const attemptedRag = usesRag || orientation.flags.includes("route_requested:rag");
+  const hasRagEvidence = attemptedRag && orientation.sources.length > 0;
 
   return {
     id: orientation.request_id,
@@ -199,7 +200,11 @@ export function adaptOrientationForFrontend(
     scenario: {
       category:
         attemptedRag && isBlocked
-          ? "Consulta con recuperación RAG bloqueada"
+          ? (
+              hasRagEvidence
+                ? "Fuentes recuperadas; explicación no validada"
+                : "Consulta con recuperación RAG bloqueada"
+            )
           : journeyLabel(orientation.journey),
       riskLevel: riskLevel(orientation.urgency),
       needsClarification: isBlocked && !attemptedRag,
@@ -251,10 +256,15 @@ export function adaptOrientationForFrontend(
                 "No constituye asesoría legal personalizada y requiere revisión humana " +
                 "antes de tomar una decisión importante."
               )
-            : (
-                "La consulta requería evidencia oficial, pero el backend no pudo recuperar " +
-                "chunks válidos. No se generó una orientación jurídica sin fuentes."
-              )
+            : hasRagEvidence
+              ? (
+                  "El backend recuperó fuentes oficiales, pero la redacción de Gemma no " +
+                  "superó la validación. Se muestran las fuentes, no una conclusión generativa."
+                )
+              : (
+                  "La consulta requería evidencia oficial, pero el backend no pudo recuperar " +
+                  "chunks válidos. No se generó una orientación jurídica sin fuentes."
+                )
         )
       : (
           "Respuesta conversacional de Gemma sin búsqueda RAG ni fuentes jurídicas. " +

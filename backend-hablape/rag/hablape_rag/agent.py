@@ -115,6 +115,15 @@ def _clean_model_text(value: str) -> str:
     ):
         value = value.replace(token, "")
 
+    # A serving template can normalize whitespace and prevent exact prompt
+    # matching. In RAG prompts the final evidence tag is a safe boundary: only
+    # content after it can be a model completion.
+    evidence_boundaries = list(
+        re.finditer(r"</EVIDENCIA_\d+>", value, flags=re.IGNORECASE)
+    )
+    if evidence_boundaries:
+        value = value[evidence_boundaries[-1].end() :].strip()
+
     # A prompt echo without a clear completion boundary is not safe to show.
     if re.search(r"(?:SYSTEM|HUMAN|CONSULTA|EVIDENCIA)\s*:", value):
         completion = re.split(
@@ -168,6 +177,8 @@ def _answer_payload(raw: str) -> dict[str, Any]:
     cleaned = _clean_model_text(raw)
     parsed = _json_object(cleaned)
     if parsed is None:
+        if cleaned.startswith(("{", "[")):
+            cleaned = ""
         return {"explanation": cleaned, "next_actions": []}
 
     explanation = str(parsed.get("explanation") or "").strip()
@@ -178,6 +189,15 @@ def _answer_payload(raw: str) -> dict[str, Any]:
         else []
     )
     return {"explanation": explanation, "next_actions": next_actions}
+
+
+def _usable_answer(payload: dict[str, Any]) -> bool:
+    explanation = str(payload.get("explanation") or "").strip()
+    actions = payload.get("next_actions") or []
+    return bool(explanation) and len(explanation) <= 2000 and not (
+        _contains_internal_context(explanation)
+        or any(_contains_internal_context(str(item)) for item in actions)
+    )
 
 
 def _fallback_route(question: str) -> dict[str, str]:
@@ -429,6 +449,26 @@ def build_hablape_graph(
             ]
         try:
             generated = _answer_payload(_response_text(model.invoke(messages)))
+            if not _usable_answer(generated):
+                if mode == "rag":
+                    retry_prompt = (
+                        "Redacta únicamente una explicación ciudadana clara de "
+                        "80 a 160 palabras usando los fragmentos oficiales. No "
+                        "devuelvas JSON, etiquetas, metadatos ni copies los "
+                        "fragmentos completos. Si falta información, indícalo.\n\n"
+                        f"<CONSULTA>\n{question}\n</CONSULTA>\n\n{context}"
+                    )
+                else:
+                    retry_prompt = (
+                        "Responde únicamente con una explicación breve y natural. "
+                        "No devuelvas JSON ni repitas estas instrucciones.\n\n"
+                        f"PREGUNTA:\n{question}"
+                    )
+                generated = _answer_payload(
+                    _response_text(
+                        model.invoke([HumanMessage(content=retry_prompt)])
+                    )
+                )
         except Exception as exc:
             return {
                 "draft": {

@@ -250,7 +250,10 @@ class AdaptiveOrchestratorTests(unittest.TestCase):
 
         self.assertEqual(response.answer_mode.value, "blocked")
         self.assertNotIn("CHUNK_ID", response.blocks.plain_explanation)
-        self.assertEqual(response.sources, [])
+        self.assertEqual(
+            [source.chunk_id for source in response.sources],
+            ["chk-protected"],
+        )
         self.assertFalse(
             next(
                 item

@@ -176,3 +176,35 @@ test("shows an attempted RAG retrieval as blocked instead of direct chat", () =>
   assert.match(adapted.pipelineTrace[1].details, /Se solicitó RAG/);
   assert.match(adapted.limitations, /requería evidencia oficial/);
 });
+
+test("distinguishes generation failure from missing RAG evidence", () => {
+  const blocked: BackendOrientation = {
+    ...orientation,
+    answer_mode: "blocked",
+    flags: ["answer_mode:blocked", "route_requested:rag"],
+    validations: [
+      {
+        name: "respuesta_modelo",
+        passed: false,
+        reason: "La respuesta generativa no superó la validación.",
+      },
+      {
+        name: "evidencia_oficial",
+        passed: true,
+        reason: "Se adjuntó un chunk recuperado.",
+      },
+    ],
+  };
+
+  const adapted = adaptOrientationForFrontend(blocked, {
+    text: "¿La policía puede revisar mi celular?",
+    mode: "text",
+  });
+
+  assert.equal(
+    adapted.scenario.category,
+    "Fuentes recuperadas; explicación no validada",
+  );
+  assert.match(adapted.limitations, /recuperó fuentes oficiales/);
+  assert.match(adapted.pipelineTrace[1].details, /1 chunks oficiales/);
+});

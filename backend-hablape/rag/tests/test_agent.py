@@ -112,6 +112,7 @@ def test_internal_rag_context_is_never_returned_as_an_explanation() -> None:
         [
             '{"mode":"rag","journey":"identidad","reason":"regla oficial"}',
             "CHUNK_ID=chk-imei TÍTULO=Norma LOCALIZADOR=Artículo 1 texto crudo",
+            "CHUNK_ID=chk-imei TÍTULO=Norma LOCALIZADOR=Artículo 1 texto crudo",
         ]
     )
     graph = build_hablape_graph(vector_store=store, model=model, top_k=2)
@@ -126,6 +127,48 @@ def test_internal_rag_context_is_never_returned_as_an_explanation() -> None:
         "contexto interno" in error
         for error in result["validation_errors"]
     )
+
+
+def test_rag_generation_retries_after_an_invalid_first_completion() -> None:
+    store = FakeVectorStore([official_document()])
+    model = FakeModel(
+        [
+            '{"mode":"rag","journey":"identidad","reason":"regla oficial"}',
+            "CHUNK_ID=chk-imei texto interno",
+            "Puedes pedir que te expliquen el motivo y alcance de la intervención.",
+        ]
+    )
+    graph = build_hablape_graph(vector_store=store, model=model, top_k=2)
+
+    result = graph.invoke(
+        {"question": "¿La policía puede revisar mi celular?", "media": []}
+    )
+
+    assert result["answer"]["mode"] == "rag"
+    assert result["answer"]["explanation"].startswith("Puedes pedir")
+
+
+def test_transformed_prompt_echo_is_cut_after_the_last_evidence_tag() -> None:
+    store = FakeVectorStore([official_document()])
+    echoed = (
+        "SYSTEM: plantilla transformada\nHUMAN: <CONSULTA>pregunta</CONSULTA>\n"
+        "<EVIDENCIA_1>texto interno</EVIDENCIA_1>\n"
+        '{"explanation":"Respuesta ciudadana clara.","next_actions":[]}'
+    )
+    model = FakeModel(
+        [
+            '{"mode":"rag","journey":"identidad","reason":"regla oficial"}',
+            echoed,
+        ]
+    )
+    graph = build_hablape_graph(vector_store=store, model=model, top_k=2)
+
+    result = graph.invoke(
+        {"question": "¿La policía puede revisar mi celular?", "media": []}
+    )
+
+    assert result["answer"]["mode"] == "rag"
+    assert result["answer"]["explanation"] == "Respuesta ciudadana clara."
 
 
 def test_rag_post_filters_synthetic_documents_without_compound_filter() -> None:

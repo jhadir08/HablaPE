@@ -275,9 +275,14 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
         )
         flags.append(f"answer_mode:{answer_mode.value}")
         route_mode = str(route.get("mode", "blocked"))
+        requested_rag = route_mode == "rag"
         flags.append(f"route_requested:{route_mode}")
 
-        docs = result.get("retrieved", []) if mode == "rag" else []
+        docs = (
+            result.get("retrieved", [])
+            if requested_rag and not result.get("retrieval_error")
+            else []
+        )
         citations = [
             citation
             for citation in (
@@ -337,7 +342,6 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
         translation_ok = input_translation.success and all(
             item.success for item in output_results
         )
-        requested_rag = route.get("mode") == "rag"
         validations = [
             ValidationResult(
                 name="ruta_agente",
