@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -36,7 +36,7 @@ class OrientationRequest(BaseModel):
     )
     consent_to_process: bool = False
     is_synthetic: bool = False
-    idioma: str = Field(default="es", min_length=2, max_length=5)
+    idioma: Literal["es", "en", "qu", "ay"] = "es"
 
     @field_validator("confirmed_facts")
     @classmethod
