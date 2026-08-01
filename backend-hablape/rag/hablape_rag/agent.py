@@ -125,11 +125,13 @@ def _clean_model_text(value: str) -> str:
         value = value[evidence_boundaries[-1].end() :].strip()
 
     # A prompt echo without a clear completion boundary is not safe to show.
-    if re.search(r"(?:SYSTEM|HUMAN|CONSULTA|EVIDENCIA)\s*:", value):
+    if re.search(
+        r"(?im)^(?:SYSTEM|HUMAN|CONSULTA|EVIDENCIA)\s*:", value
+    ):
         completion = re.split(
-            r"(?:ASSISTANT|MODEL|OUTPUT|RESPUESTA|EXPLICACI[ÓO]N)\s*:\s*",
+            r"(?im)^(?:ASSISTANT|MODEL|OUTPUT|RESPUESTA|"
+            r"EXPLICACI[ÓO]N)\s*:\s*",
             value,
-            flags=re.IGNORECASE,
         )
         value = completion[-1] if len(completion) > 1 else ""
 
@@ -182,14 +184,86 @@ def _journey_hint(text: str) -> str:
 
 
 def _json_object(value: str) -> dict[str, Any] | None:
-    match = re.search(r"\{.*\}", value, flags=re.DOTALL)
+    decoder = json.JSONDecoder()
+    for match in re.finditer(r"\{", value):
+        try:
+            parsed, _ = decoder.raw_decode(value[match.start() :])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict):
+            return parsed
+    return None
+
+
+def _partial_json_explanation(value: str) -> str:
+    """Salvage a complete explanation from otherwise truncated JSON."""
+
+    match = re.search(
+        r'"explanation"\s*:\s*"((?:\\.|[^"\\])*)"',
+        value,
+        flags=re.DOTALL,
+    )
     if not match:
-        return None
+        return ""
     try:
-        parsed = json.loads(match.group(0))
+        return str(json.loads(f'"{match.group(1)}"')).strip()
     except json.JSONDecodeError:
+        return ""
+
+
+_SECTION_PATTERN = re.compile(
+    r"(?im)^(EXPLICACI[ÓO]N|PUEDE HACER|NO PUEDE HACER|"
+    r"QU[ÉE] PUEDE HACER|QU[ÉE] NO PUEDE HACER|QU[ÉE] HACER|PASOS|"
+    r"FRASE(?:S)? [ÚU]TIL(?:ES)?|SIGUIENTE CONSULTA)\s*:\s*"
+)
+
+
+def _section_items(value: str) -> list[str]:
+    items = [
+        re.sub(r"^(?:[-*•]|\d+[.)])\s*", "", line).strip()
+        for line in value.splitlines()
+        if line.strip()
+    ]
+    return [item for item in items if item][:4]
+
+
+def _sectioned_answer(value: str) -> dict[str, Any] | None:
+    matches = list(_SECTION_PATTERN.finditer(value))
+    if not matches:
         return None
-    return parsed if isinstance(parsed, dict) else None
+    sections: dict[str, str] = {}
+    for index, match in enumerate(matches):
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(value)
+        heading = _fold(match.group(1))
+        body = value[match.end() : end].strip()
+        if "explicacion" in heading:
+            key = "explanation"
+        elif "no puede hacer" in heading:
+            key = "police_cannot_do"
+        elif "puede hacer" in heading:
+            key = "police_can_do"
+        elif heading in {"que hacer", "pasos"}:
+            key = "next_actions"
+        elif heading.startswith("frase"):
+            key = "suggested_phrases"
+        else:
+            key = "follow_up_question"
+        sections[key] = body
+    explanation = sections.get("explanation", "").strip()
+    if not explanation:
+        return None
+    return {
+        "explanation": explanation,
+        "next_actions": _section_items(sections.get("next_actions", "")),
+        "police_can_do": _section_items(sections.get("police_can_do", "")),
+        "police_cannot_do": _section_items(
+            sections.get("police_cannot_do", "")
+        ),
+        "suggested_phrases": _section_items(
+            sections.get("suggested_phrases", "")
+        ),
+        "follow_up_question": sections.get("follow_up_question", "").strip(),
+    }
 
 
 _INTERNAL_CONTEXT_PATTERN = re.compile(
@@ -209,8 +283,11 @@ def _answer_payload(raw: str) -> dict[str, Any]:
     cleaned = _clean_model_text(raw)
     parsed = _json_object(cleaned)
     if parsed is None:
+        sectioned = _sectioned_answer(cleaned)
+        if sectioned is not None:
+            return sectioned
         if cleaned.startswith(("{", "[")):
-            cleaned = ""
+            cleaned = _partial_json_explanation(cleaned)
         return {
             "explanation": cleaned,
             "next_actions": [],
@@ -490,11 +567,12 @@ def build_hablape_graph(
                 HumanMessage(content=question),
             ]
         else:
+            retrieved = state.get("retrieved", [])
             context_parts: list[str] = []
-            for index, doc in enumerate(state.get("retrieved", [])[:4], start=1):
-                evidence = " ".join(str(doc.page_content).split())[:1600]
+            for index, doc in enumerate(retrieved[:3], start=1):
+                evidence = " ".join(str(doc.page_content).split())[:1200]
                 context_parts.append(
-                    f"<EVIDENCIA_{index}>\n{evidence}\n</EVIDENCIA_{index}>"
+                    f"FRAGMENTO OFICIAL {index}\n{evidence}"
                 )
             context = "\n\n".join(context_parts)
             messages = [
@@ -524,7 +602,7 @@ def build_hablape_graph(
                 ),
                 HumanMessage(
                     content=(
-                        f"<CONSULTA>\n{question}\n</CONSULTA>\n\n{context}"
+                        f"CONSULTA CIUDADANA\n{question}\n\n{context}"
                     )
                 ),
             ]
@@ -535,18 +613,36 @@ def build_hablape_graph(
                 and mode == "rag"
                 and not state.get("media")
             ):
+                logger.warning(
+                    "Gemma devolvió una primera respuesta RAG no utilizable; "
+                    "se ejecutará un reintento compacto."
+                )
+                compact_parts = [
+                    " ".join(str(doc.page_content).split())[:700]
+                    for doc in state.get("retrieved", [])[:2]
+                ]
+                compact_context = "\n\n".join(
+                    f"FUENTE {index}: {text}"
+                    for index, text in enumerate(compact_parts, start=1)
+                )
                 retry_prompt = (
-                    "Redacta únicamente una explicación ciudadana clara de "
-                    "80 a 160 palabras usando los fragmentos oficiales. No "
-                    "devuelvas JSON, etiquetas, metadatos ni copies los "
-                    "fragmentos completos. Si falta información, indícalo.\n\n"
-                    f"<CONSULTA>\n{question}\n</CONSULTA>\n\n{context}"
+                    "Responde en español claro usando solo las fuentes incluidas. "
+                    "No copies las fuentes, no uses JSON ni etiquetas técnicas. "
+                    "Si una conclusión no está respaldada, indícalo. Usa exactamente "
+                    "estos encabezados, dejando vacío lo no sustentado:\n"
+                    "EXPLICACIÓN:\nPUEDE HACER:\nNO PUEDE HACER:\n"
+                    "QUÉ HACER:\nFRASE ÚTIL:\nSIGUIENTE CONSULTA:\n\n"
+                    f"PREGUNTA DEL CIUDADANO: {question}\n\n{compact_context}"
                 )
                 generated = _answer_payload(
                     _response_text(
                         model.invoke([HumanMessage(content=retry_prompt)])
                     )
                 )
+                if not _usable_answer(generated):
+                    logger.warning(
+                        "Gemma devolvió una segunda respuesta RAG no utilizable."
+                    )
         except Exception as exc:
             return {
                 "draft": {

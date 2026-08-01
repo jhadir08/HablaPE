@@ -69,7 +69,7 @@ class Settings:
             os.getenv("HABLAPE_GEMMA_TIMEOUT_SECONDS", "30")
         )
         gemma_max_output_tokens = int(
-            os.getenv("HABLAPE_GEMMA_MAX_OUTPUT_TOKENS", "512")
+            os.getenv("HABLAPE_GEMMA_MAX_OUTPUT_TOKENS", "768")
         )
         rag_top_k = int(os.getenv("HABLAPE_RAG_TOP_K", "6"))
 

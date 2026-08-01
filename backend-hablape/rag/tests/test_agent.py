@@ -180,6 +180,62 @@ def test_rag_generation_retries_after_an_invalid_first_completion() -> None:
     assert result["answer"]["explanation"].startswith("Puedes pedir")
 
 
+def test_compact_retry_parses_guidance_sections_without_json() -> None:
+    store = FakeVectorStore([official_document()])
+    model = FakeModel(
+        [
+            "<EVIDENCIA_10",
+            (
+                "EXPLICACIÓN: La fuente permite orientar el control, pero no "
+                "resuelve todos los detalles del caso.\n"
+                "PUEDE HACER:\n- Solicitar la identificación.\n"
+                "NO PUEDE HACER:\n- Exceder los límites aplicables.\n"
+                "QUÉ HACER:\n- Pregunta con calma el motivo.\n"
+                "FRASE ÚTIL:\n- ¿Podría explicarme el motivo del control?\n"
+                "SIGUIENTE CONSULTA: ¿Qué hago si no aceptan mi documento?"
+            ),
+        ]
+    )
+    graph = build_hablape_graph(vector_store=store, model=model, top_k=2)
+
+    result = graph.invoke(
+        {"question": "¿La policía puede pedirme el DNI?", "media": []}
+    )
+
+    assert result["answer"]["mode"] == "rag"
+    assert result["answer"]["police_can_do"] == [
+        "Solicitar la identificación."
+    ]
+    assert result["answer"]["next_actions"] == [
+        "Pregunta con calma el motivo."
+    ]
+    assert result["answer"]["suggested_phrases"] == [
+        "¿Podría explicarme el motivo del control?"
+    ]
+
+
+def test_truncated_json_salvages_a_complete_explanation() -> None:
+    store = FakeVectorStore([official_document()])
+    model = FakeModel(
+        [
+            (
+                '{"explanation":"La evidencia permite dar una orientación '
+                'limitada.","next_actions":["Pregunta el motivo"'
+            ),
+        ]
+    )
+    graph = build_hablape_graph(vector_store=store, model=model, top_k=2)
+
+    result = graph.invoke(
+        {"question": "¿La policía puede pedirme el DNI?", "media": []}
+    )
+
+    assert result["answer"]["mode"] == "rag"
+    assert result["answer"]["explanation"] == (
+        "La evidencia permite dar una orientación limitada."
+    )
+
+
 def test_transformed_prompt_echo_is_cut_after_the_last_evidence_tag() -> None:
     store = FakeVectorStore([official_document()])
     echoed = (
