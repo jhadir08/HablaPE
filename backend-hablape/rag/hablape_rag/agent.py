@@ -195,7 +195,7 @@ def _json_object(value: str) -> dict[str, Any] | None:
 _INTERNAL_CONTEXT_PATTERN = re.compile(
     r"(?:CHUNK_ID|T[ÍI]TULO|LOCALIZADOR)\s*=|"
     r"(?:SYSTEM|HUMAN)\s*:|"
-    r"</?(?:EVIDENCIA_\d+|CONSULTA)>|"
+    r"</?(?:EVIDENCIA_\d+|CONSULTA)(?:\s*>|\b)|"
     r"(?:CONSULTA|EVIDENCIA)\s*:\s*\n",
     flags=re.IGNORECASE,
 )
@@ -211,24 +211,52 @@ def _answer_payload(raw: str) -> dict[str, Any]:
     if parsed is None:
         if cleaned.startswith(("{", "[")):
             cleaned = ""
-        return {"explanation": cleaned, "next_actions": []}
+        return {
+            "explanation": cleaned,
+            "next_actions": [],
+            "police_can_do": [],
+            "police_cannot_do": [],
+            "suggested_phrases": [],
+            "follow_up_question": "",
+        }
 
     explanation = str(parsed.get("explanation") or "").strip()
-    actions = parsed.get("next_actions")
-    next_actions = (
-        [str(item).strip() for item in actions if str(item).strip()][:4]
-        if isinstance(actions, list)
-        else []
+    list_fields = (
+        "next_actions",
+        "police_can_do",
+        "police_cannot_do",
+        "suggested_phrases",
     )
-    return {"explanation": explanation, "next_actions": next_actions}
+    payload: dict[str, Any] = {"explanation": explanation}
+    for key in list_fields:
+        values = parsed.get(key)
+        payload[key] = (
+            [str(item).strip() for item in values if str(item).strip()][:4]
+            if isinstance(values, list)
+            else []
+        )
+    payload["follow_up_question"] = str(
+        parsed.get("follow_up_question") or ""
+    ).strip()
+    return payload
 
 
 def _usable_answer(payload: dict[str, Any]) -> bool:
     explanation = str(payload.get("explanation") or "").strip()
-    actions = payload.get("next_actions") or []
+    generated_values = [
+        str(item)
+        for key in (
+            "next_actions",
+            "police_can_do",
+            "police_cannot_do",
+            "suggested_phrases",
+        )
+        for item in (payload.get(key) or [])
+    ]
+    generated_values.append(str(payload.get("follow_up_question") or ""))
     return bool(explanation) and len(explanation) <= 2000 and not (
         _contains_internal_context(explanation)
-        or any(_contains_internal_context(str(item)) for item in actions)
+        or any(_contains_internal_context(item) for item in generated_values)
     )
 
 
@@ -451,7 +479,11 @@ def build_hablape_graph(
                         "realmente exige una regla oficial, dilo expresamente. "
                         "Devuelve solamente JSON válido con este contrato: "
                         '{"explanation":"respuesta breve",'
-                        '"next_actions":["acción opcional"]}. La explicación '
+                        '"police_can_do":[],"police_cannot_do":[],'
+                        '"next_actions":["acción opcional"],'
+                        '"suggested_phrases":[],'
+                        '"follow_up_question":"consulta completa opcional"}. '
+                        "Usa listas vacías cuando no corresponda. La explicación "
                         "debe tener como máximo 160 palabras."
                     )
                 ),
@@ -474,12 +506,20 @@ def build_hablape_graph(
                         "No copies la evidencia, nombres de campos ni instrucciones "
                         "internas. No selecciones ni devuelvas citas: el backend "
                         "las adjunta de forma determinista. Señala la incertidumbre "
-                        "cuando la evidencia sea incompleta. Devuelve solamente "
+                        "cuando la evidencia sea incompleta. Analiza cómo se aplica "
+                        "la evidencia al relato y ofrece orientación práctica, no "
+                        "una copia de los fragmentos. Devuelve solamente "
                         "JSON válido con este contrato: "
                         '{"explanation":"síntesis en lenguaje ciudadano",'
-                        '"next_actions":["paso concreto"]}. La explicación debe '
-                        "tener como máximo 180 palabras y las acciones deben surgir "
-                        "de la evidencia."
+                        '"police_can_do":["facultad sustentada"],'
+                        '"police_cannot_do":["límite sustentado"],'
+                        '"next_actions":["paso concreto y prudente"],'
+                        '"suggested_phrases":["frase respetuosa para usar"],'
+                        '"follow_up_question":"consulta completa que el usuario '
+                        'podría hacer después"}. Usa listas vacías para lo que no '
+                        "esté sustentado. La explicación debe tener como máximo "
+                        "180 palabras; máximo 3 elementos por lista. No presentes "
+                        "inferencias como si fueran texto de una norma."
                     )
                 ),
                 HumanMessage(
@@ -520,6 +560,10 @@ def build_hablape_graph(
                 "mode": mode,
                 "explanation": generated["explanation"],
                 "next_actions": generated["next_actions"],
+                "police_can_do": generated["police_can_do"],
+                "police_cannot_do": generated["police_cannot_do"],
+                "suggested_phrases": generated["suggested_phrases"],
+                "follow_up_question": generated["follow_up_question"],
             }
         }
 
@@ -533,12 +577,37 @@ def build_hablape_graph(
             for item in draft.get("next_actions", [])
             if str(item).strip()
         ][:4]
+        police_can_do = [
+            str(item).strip()
+            for item in draft.get("police_can_do", [])
+            if str(item).strip()
+        ][:4]
+        police_cannot_do = [
+            str(item).strip()
+            for item in draft.get("police_cannot_do", [])
+            if str(item).strip()
+        ][:4]
+        suggested_phrases = [
+            str(item).strip()
+            for item in draft.get("suggested_phrases", [])
+            if str(item).strip()
+        ][:4]
+        follow_up_question = str(
+            draft.get("follow_up_question") or ""
+        ).strip()
+        generated_values = [
+            *next_actions,
+            *police_can_do,
+            *police_cannot_do,
+            *suggested_phrases,
+            follow_up_question,
+        ]
         errors: list[str] = []
         docs = state.get("retrieved", [])
         if not explanation:
             errors.append("Gemma no devolvió una explicación utilizable.")
         if _contains_internal_context(explanation) or any(
-            _contains_internal_context(item) for item in next_actions
+            _contains_internal_context(item) for item in generated_values
         ):
             errors.append(
                 "La respuesta del modelo expuso contexto interno y fue descartada."
@@ -582,6 +651,10 @@ def build_hablape_graph(
                 else "No se pudo producir una explicación clara y validada."
             ),
             "next_actions": next_actions if not errors else [],
+            "police_can_do": police_can_do if not errors else [],
+            "police_cannot_do": police_cannot_do if not errors else [],
+            "suggested_phrases": suggested_phrases if not errors else [],
+            "follow_up_question": follow_up_question if not errors else "",
             "chunk_ids": chunk_ids,
             "status": status,
             "route_reason": state.get("route", {}).get("reason", ""),

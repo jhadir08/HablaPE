@@ -28,6 +28,10 @@ export type BackendOrientation = {
     official_rules: string[];
     plain_explanation: string;
     next_actions: string[];
+    police_can_do?: string[];
+    police_cannot_do?: string[];
+    suggested_phrases?: string[];
+    follow_up_question?: string | null;
     channel?: string | null;
     draft?: string | null;
   };
@@ -234,10 +238,17 @@ export function adaptOrientationForFrontend(
       citizenRights: orientation.blocks.official_rules,
       citizenDuties: [],
       whatToDo: orientation.blocks.next_actions,
-      whatPoliceCanDo: [],
-      whatPoliceCannotDo: [],
+      whatPoliceCanDo: orientation.blocks.police_can_do || [],
+      whatPoliceCannotDo: orientation.blocks.police_cannot_do || [],
     },
-    suggestedPhrases: [],
+    suggestedPhrases: (orientation.blocks.suggested_phrases || []).map(
+      (phrase) => ({
+        phrase,
+        context: "Durante la intervención o al pedir una explicación.",
+        purpose: "Comunicarte con claridad y respeto.",
+      }),
+    ),
+    followUpQuestion: orientation.blocks.follow_up_question || undefined,
     legalReferences: orientation.sources.map((source) => ({
       document: source.title,
       article: source.locator,

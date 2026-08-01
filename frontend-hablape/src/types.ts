@@ -68,6 +68,7 @@ export interface QueryResponse {
     whatPoliceCannotDo: string[];
   };
   suggestedPhrases: SuggestedPhrase[];
+  followUpQuestion?: string;
   legalReferences: LegalReference[];
   derivationChannels: DerivationChannel[];
   limitations: string;

@@ -89,7 +89,11 @@ def test_structured_rag_answer_keeps_actions_separate_from_explanation() -> None
         [
             (
                 '{"explanation":"Puedes pedir que te indiquen el motivo del '
-                'control.","next_actions":["Pregunta el motivo con calma."]}'
+                'control.","police_can_do":["Solicitar identificación."],'
+                '"police_cannot_do":["Exceder los límites de la intervención."],'
+                '"next_actions":["Pregunta el motivo con calma."],'
+                '"suggested_phrases":["¿Podría indicarme el motivo?"],'
+                '"follow_up_question":"¿Qué hago si no me explican el motivo?"}'
             ),
         ]
     )
@@ -107,6 +111,16 @@ def test_structured_rag_answer_keeps_actions_separate_from_explanation() -> None
     assert result["answer"]["next_actions"] == [
         "Pregunta el motivo con calma."
     ]
+    assert result["answer"]["police_can_do"] == [
+        "Solicitar identificación."
+    ]
+    assert result["answer"]["police_cannot_do"] == [
+        "Exceder los límites de la intervención."
+    ]
+    assert result["answer"]["suggested_phrases"] == [
+        "¿Podría indicarme el motivo?"
+    ]
+    assert result["answer"]["follow_up_question"].startswith("¿Qué hago")
 
 
 def test_internal_rag_context_is_never_returned_as_an_explanation() -> None:
@@ -125,6 +139,23 @@ def test_internal_rag_context_is_never_returned_as_an_explanation() -> None:
 
     assert result["answer"]["mode"] == "blocked"
     assert "CHUNK_ID" not in result["answer"]["explanation"]
+    assert any(
+        "contexto interno" in error
+        for error in result["validation_errors"]
+    )
+
+
+def test_truncated_evidence_tag_is_never_returned_as_an_explanation() -> None:
+    store = FakeVectorStore([official_document()])
+    model = FakeModel(["<EVIDENCIA_10", "<EVIDENCIA_10"])
+    graph = build_hablape_graph(vector_store=store, model=model, top_k=2)
+
+    result = graph.invoke(
+        {"question": "¿La policía puede pedirme el DNI?", "media": []}
+    )
+
+    assert result["answer"]["mode"] == "blocked"
+    assert "EVIDENCIA" not in result["answer"]["explanation"]
     assert any(
         "contexto interno" in error
         for error in result["validation_errors"]

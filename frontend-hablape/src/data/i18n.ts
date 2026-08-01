@@ -29,7 +29,11 @@ export type UIStrings = {
   analyzing: string;
   rightsTitle: string;
   dutiesTitle: string;
+  policeCanDoTitle: string;
+  policeCannotDoTitle: string;
   whatToDoTitle: string;
+  continueTitle: string;
+  continueButton: string;
   officialSources: string;
   officialSourceNotice: string;
   phraseSuggested: string;
@@ -67,7 +71,11 @@ export const I18N_STRINGS: Record<Language, UIStrings> = {
     analyzing: 'Analizando consulta...',
     rightsTitle: 'Evidencia oficial relevante',
     dutiesTitle: 'Tus deberes ciudadanos',
+    policeCanDoTitle: 'Qué puede hacer la Policía',
+    policeCannotDoTitle: 'Qué no puede hacer la Policía',
     whatToDoTitle: 'Recomendaciones de acción inmediata',
+    continueTitle: 'Puedes continuar la conversación',
+    continueButton: 'Continuar',
     officialSources: 'Fuentes utilizadas por el backend',
     officialSourceNotice: 'El texto de la fuente se conserva en español para no alterar su contenido oficial.',
     phraseSuggested: 'Frases sugeridas para comunicarte',
@@ -103,7 +111,11 @@ export const I18N_STRINGS: Record<Language, UIStrings> = {
     analyzing: 'Analyzing query...',
     rightsTitle: 'Relevant official evidence',
     dutiesTitle: 'Your citizen duties',
+    policeCanDoTitle: 'What the police may do',
+    policeCannotDoTitle: 'What the police may not do',
     whatToDoTitle: 'Recommended immediate actions',
+    continueTitle: 'You can continue the conversation',
+    continueButton: 'Continue',
     officialSources: 'Sources used by the backend',
     officialSourceNotice: 'Official source text remains in Spanish so its content is not altered.',
     phraseSuggested: 'Suggested communication phrases',
@@ -139,7 +151,11 @@ export const I18N_STRINGS: Record<Language, UIStrings> = {
     analyzing: 'Tapukuyta qawachkan...',
     rightsTitle: 'Oficial kamachikuykuna',
     dutiesTitle: 'Runap ruwayninkuna',
+    policeCanDoTitle: 'Policíapa ruwanan atisqan',
+    policeCannotDoTitle: 'Policíapa mana ruwanan atisqan',
     whatToDoTitle: 'Imatataq ruwawaq',
+    continueTitle: 'Rimayta qatichiyta atiwaq',
+    continueButton: 'Qatichiy',
     officialSources: 'Backend nisqapa llamkachisqan pukyukuna',
     officialSourceNotice: 'Oficial qillqasqaqa kastilla simipi waqaychasqa, mana hukman tikranapaq.',
     phraseSuggested: 'Sumaq rimaykuna',
@@ -175,7 +191,11 @@ export const I18N_STRINGS: Record<Language, UIStrings> = {
     analyzing: 'Jiskt’awi uñakipaski...',
     rightsTitle: 'Oficial kamanaka',
     dutiesTitle: 'Jaqin phuqhañanakapaj',
+    policeCanDoTitle: 'Policía kunsa luraspawa',
+    policeCannotDoTitle: 'Policía kunsa jani lurkaspawa',
     whatToDoTitle: 'Kunas lurañama',
+    continueTitle: 'Aruskipäwimpi sarantaskakismawa',
+    continueButton: 'Sarantaskakiña',
     officialSources: 'Backend apnaqata oficial phuqhawinaka',
     officialSourceNotice: 'Oficial qillqataxa kastill arunwa qhiparaski, jan mayjt’ayañataki.',
     phraseSuggested: 'Sumaq arsuwinaka',

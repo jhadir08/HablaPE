@@ -823,17 +823,8 @@ export const QueryModule: React.FC<QueryModuleProps> = ({
               </p>
             </div>
 
-            {/* Rights & Duties Grid */}
-            {(queryResult.explanation.citizenRights.length > 0 ||
-              queryResult.explanation.whatPoliceCannotDo.length > 0) && (
-            <div className={`grid grid-cols-1 gap-4 ${
-              queryResult.explanation.citizenRights.length > 0 &&
-              queryResult.explanation.whatPoliceCannotDo.length > 0
-                ? 'md:grid-cols-2'
-                : ''
-            }`}>
-              {/* Citizen Rights */}
-              {queryResult.explanation.citizenRights.length > 0 && (
+            {/* The retrieved evidence remains visually separate from Gemma's analysis. */}
+            {queryResult.explanation.citizenRights.length > 0 && (
               <div className="p-4 bg-emerald-50/60 border border-emerald-200/80 rounded-xl space-y-2">
                 <h4 className="text-xs font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
@@ -848,13 +839,33 @@ export const QueryModule: React.FC<QueryModuleProps> = ({
                   ))}
                 </ul>
               </div>
+            )}
+
+            {(queryResult.explanation.whatPoliceCanDo.length > 0 ||
+              queryResult.explanation.whatPoliceCannotDo.length > 0) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {queryResult.explanation.whatPoliceCanDo.length > 0 && (
+                <div className="p-4 bg-sky-50/60 border border-sky-200/80 rounded-xl space-y-2">
+                  <h4 className="text-xs font-bold text-sky-900 uppercase tracking-wider flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-sky-600" />
+                    {t.policeCanDoTitle}
+                  </h4>
+                  <ul className="space-y-1.5 text-xs text-slate-700">
+                    {queryResult.explanation.whatPoliceCanDo.map((item, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="text-sky-600 font-bold">•</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
 
               {queryResult.explanation.whatPoliceCannotDo.length > 0 && (
                 <div className="p-4 bg-amber-50/60 border border-amber-200/80 rounded-xl space-y-2">
                   <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider flex items-center gap-2">
                     <ShieldAlert className="w-4 h-4 text-amber-600" />
-                    Lo que la Policía NO Puede Hacer
+                    {t.policeCannotDoTitle}
                   </h4>
                   <ul className="space-y-1.5 text-xs text-slate-700">
                     {queryResult.explanation.whatPoliceCannotDo.map((item, idx) => (
@@ -886,6 +897,31 @@ export const QueryModule: React.FC<QueryModuleProps> = ({
                 ))}
               </div>
             </div>
+            )}
+
+            {queryResult.followUpQuestion && (
+              <div className="p-4 bg-sky-50 border border-sky-200 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-xs font-bold text-sky-900 uppercase tracking-wider flex items-center gap-2">
+                    <MessageSquareText className="w-4 h-4 text-sky-600" />
+                    {t.continueTitle}
+                  </h4>
+                  <p className="mt-1.5 text-sm text-slate-700">{queryResult.followUpQuestion}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInputText(queryResult.followUpQuestion || '');
+                    setQueryResult(null);
+                    requestAnimationFrame(() => {
+                      inputAreaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    });
+                  }}
+                  className="shrink-0 px-4 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold transition-colors"
+                >
+                  {t.continueButton}
+                </button>
+              </div>
             )}
           </div>
 

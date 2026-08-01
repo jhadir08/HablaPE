@@ -100,6 +100,43 @@ class AdaptiveOrchestratorTests(unittest.TestCase):
         self.assertEqual(response.journey.value, "general")
         self.assertEqual(response.sources, [])
 
+    def test_police_query_is_not_labeled_as_general_when_route_is_imprecise(
+        self,
+    ) -> None:
+        graph = FakeGraph(
+            {
+                "route": {
+                    "mode": "rag",
+                    "journey": "general",
+                    "reason": "Requiere evidencia oficial.",
+                },
+                "retrieved": [],
+                "answer": {
+                    "mode": "blocked",
+                    "explanation": "No se recuperó evidencia suficiente.",
+                    "normalized_question": (
+                        "La policía detuvo a un ciudadano extranjero con CPP."
+                    ),
+                },
+                "validation_errors": ["No se recuperaron chunks oficiales."],
+            }
+        )
+        orchestrator = AdaptiveOrientationOrchestrator(
+            settings=self.settings,
+            corpus=self.corpus,
+            traces=MemoryTraceStore(),
+            graph=graph,
+        )
+
+        response = orchestrator.orient(
+            OrientationRequest(
+                text="La policía dice que mi CPP no vale.",
+                consent_to_process=True,
+            )
+        )
+
+        self.assertEqual(response.journey.value, "identidad")
+
     def test_rag_sources_come_from_retrieved_documents(self) -> None:
         document = FakeDocument(
             page_content="Texto oficial recuperado.",
@@ -123,6 +160,13 @@ class AdaptiveOrchestratorTests(unittest.TestCase):
                 "answer": {
                     "mode": "rag",
                     "explanation": "Respuesta limitada a la evidencia.",
+                    "police_can_do": ["Solicitar la identificación."],
+                    "police_cannot_do": ["Exceder el alcance informado."],
+                    "next_actions": ["Pregunta el motivo del control."],
+                    "suggested_phrases": ["¿Podría explicarme el motivo?"],
+                    "follow_up_question": (
+                        "¿Qué hago si no me informan el motivo del control?"
+                    ),
                     "chunk_ids": ["chk-real"],
                     "normalized_question": "¿La policía puede revisar mi IMEI?",
                 },
@@ -145,6 +189,19 @@ class AdaptiveOrchestratorTests(unittest.TestCase):
 
         self.assertEqual(response.answer_mode.value, "rag_gemma")
         self.assertEqual([item.chunk_id for item in response.sources], ["chk-real"])
+        self.assertEqual(
+            response.blocks.police_can_do,
+            ["Solicitar la identificación."],
+        )
+        self.assertEqual(
+            response.blocks.police_cannot_do,
+            ["Exceder el alcance informado."],
+        )
+        self.assertEqual(
+            response.blocks.suggested_phrases,
+            ["¿Podría explicarme el motivo?"],
+        )
+        self.assertTrue(response.blocks.follow_up_question)
         self.assertTrue(
             next(
                 item
@@ -261,6 +318,39 @@ class AdaptiveOrchestratorTests(unittest.TestCase):
                 if item.name == "respuesta_modelo"
             ).passed
         )
+
+    def test_truncated_evidence_tag_is_blocked_before_frontend(self) -> None:
+        graph = FakeGraph(
+            {
+                "route": {
+                    "mode": "rag",
+                    "journey": "identidad",
+                    "reason": "Requiere fuente oficial.",
+                },
+                "retrieved": [],
+                "answer": {
+                    "mode": "rag",
+                    "explanation": "<EVIDENCIA_10",
+                },
+                "validation_errors": [],
+            }
+        )
+        orchestrator = AdaptiveOrientationOrchestrator(
+            settings=self.settings,
+            corpus=self.corpus,
+            traces=MemoryTraceStore(),
+            graph=graph,
+        )
+
+        response = orchestrator.orient(
+            OrientationRequest(
+                text="¿La policía puede pedirme el DNI?",
+                consent_to_process=True,
+            )
+        )
+
+        self.assertEqual(response.answer_mode.value, "blocked")
+        self.assertNotIn("EVIDENCIA", response.blocks.plain_explanation)
 
 
 if __name__ == "__main__":

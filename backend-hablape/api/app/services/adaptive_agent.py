@@ -87,7 +87,7 @@ def _citation(doc: Any, corpus_version: str) -> SourceCitation | None:
 _INTERNAL_CONTEXT_PATTERN = re.compile(
     r"(?:CHUNK_ID|T[ÍI]TULO|LOCALIZADOR)\s*=|"
     r"(?:SYSTEM|HUMAN)\s*:|"
-    r"</?(?:EVIDENCIA_\d+|CONSULTA)>",
+    r"</?(?:EVIDENCIA_\d+|CONSULTA)(?:\s*>|\b)",
     flags=re.IGNORECASE,
 )
 
@@ -243,14 +243,43 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
             for item in answer.get("next_actions", [])
             if str(item).strip()
         ][:4]
+        police_can_do = [
+            str(item).strip()
+            for item in answer.get("police_can_do", [])
+            if str(item).strip()
+        ][:4]
+        police_cannot_do = [
+            str(item).strip()
+            for item in answer.get("police_cannot_do", [])
+            if str(item).strip()
+        ][:4]
+        suggested_phrases = [
+            str(item).strip()
+            for item in answer.get("suggested_phrases", [])
+            if str(item).strip()
+        ][:4]
+        follow_up_question = str(
+            answer.get("follow_up_question") or ""
+        ).strip()
         validation_errors = list(result.get("validation_errors", []))
+        generated_values = [
+            *next_actions,
+            *police_can_do,
+            *police_cannot_do,
+            *suggested_phrases,
+            follow_up_question,
+        ]
         leaked_context = _contains_internal_context(explanation) or any(
-            _contains_internal_context(item) for item in next_actions
+            _contains_internal_context(item) for item in generated_values
         )
         if leaked_context:
             mode = "blocked"
             explanation = "No se pudo producir una explicación clara y validada."
             next_actions = []
+            police_can_do = []
+            police_cannot_do = []
+            suggested_phrases = []
+            follow_up_question = ""
             validation_errors.append(
                 "La salida contenía metadatos internos del RAG y fue descartada."
             )
@@ -264,6 +293,12 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
             answer.get("normalized_question") or input_translation.text
         ).strip()
         classification = classify(normalized)
+        if journey == Journey.GENERAL and classification.journey in {
+            Journey.IDENTITY,
+            Journey.CONSUMER,
+            Journey.SECTORAL_CONSUMER,
+        }:
+            journey = classification.journey
         urgency = (
             classification.urgency
             if journey != Journey.GENERAL
@@ -318,7 +353,16 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
             if value is not None
         )
 
-        output_values = [*facts, explanation, *next_actions]
+        has_follow_up = bool(follow_up_question)
+        output_values = [
+            *facts,
+            explanation,
+            *police_can_do,
+            *police_cannot_do,
+            *next_actions,
+            *suggested_phrases,
+            *([follow_up_question] if has_follow_up else []),
+        ]
         output_results = (
             self._translator.translate_many(
                 output_values,
@@ -335,10 +379,23 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
         facts = [item.text for item in output_results[:fact_count]]
         if language != Language.SPANISH and payload.text.strip() and facts:
             facts[0] = payload.text.strip()
-        explanation = output_results[fact_count].text
-        next_actions = [
-            item.text for item in output_results[fact_count + 1 :]
-        ]
+        cursor = fact_count
+        explanation = output_results[cursor].text
+        cursor += 1
+
+        def translated_slice(size: int) -> list[str]:
+            nonlocal cursor
+            values = [item.text for item in output_results[cursor : cursor + size]]
+            cursor += size
+            return values
+
+        police_can_do = translated_slice(len(police_can_do))
+        police_cannot_do = translated_slice(len(police_cannot_do))
+        next_actions = translated_slice(len(next_actions))
+        suggested_phrases = translated_slice(len(suggested_phrases))
+        follow_up_question = (
+            output_results[cursor].text if has_follow_up else ""
+        )
         translation_ok = input_translation.success and all(
             item.success for item in output_results
         )
@@ -420,6 +477,10 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
                 official_rules=rules,
                 plain_explanation=explanation,
                 next_actions=next_actions,
+                police_can_do=police_can_do,
+                police_cannot_do=police_cannot_do,
+                suggested_phrases=suggested_phrases,
+                follow_up_question=follow_up_question or None,
                 channel=None,
             ),
             sources=citations,

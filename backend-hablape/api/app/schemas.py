@@ -143,6 +143,10 @@ class AnswerBlocks(BaseModel):
     official_rules: list[str]
     plain_explanation: str
     next_actions: list[str]
+    police_can_do: list[str] = Field(default_factory=list)
+    police_cannot_do: list[str] = Field(default_factory=list)
+    suggested_phrases: list[str] = Field(default_factory=list)
+    follow_up_question: str | None = None
     channel: str | None = None
     draft: str | None = None
 
