@@ -103,7 +103,13 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
       setRecordingSeconds(0);
 
       timerRef.current = setInterval(() => {
-        setRecordingSeconds((prev) => prev + 1);
+        setRecordingSeconds((prev) => {
+          if (prev >= 29) {
+            setTimeout(() => stopRecording(), 0);
+            return 30;
+          }
+          return prev + 1;
+        });
       }, 1000);
     } catch (err) {
       console.error('Microphone error:', err);
@@ -112,7 +118,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
       setIsRecording(false);
@@ -123,6 +129,17 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        setErrorMessage('La imagen debe ser JPG, PNG o WebP.');
+        e.target.value = '';
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setErrorMessage('La imagen no puede superar 5 MB.');
+        e.target.value = '';
+        return;
+      }
+      setErrorMessage(null);
       setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -147,13 +164,13 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
     setQueryResult(null);
     setIsSaved(false);
 
-    // Simulate pipeline steps visual
+    // The actual route is selected by the backend agent.
     const steps = [
-      'Clasificando escenario de intervención...',
-      'Extrayendo hechos e identificando información faltante...',
-      'Consultando RAG en Corpus Oficial (D.S. N° 012-2025-IN y CPP Art. 205)...',
-      'Validando motor determinístico de vigencia legal...',
-      'Sintetizando explicación y frases recomendadas...'
+      'Gemma está comprendiendo la consulta...',
+      'El agente está decidiendo entre respuesta directa y RAG...',
+      'Consultando Vector Search solo si se necesita evidencia oficial...',
+      'Validando que las fuentes provengan de chunks recuperados...',
+      'Preparando la respuesta final...'
     ];
 
     let stepIdx = 0;
@@ -172,6 +189,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
           text: textQuery,
           mode: inputMode,
           audioBase64: audioBase64,
+          audioDurationSeconds: recordingSeconds || undefined,
           imageBase64: filePreview,
           fileName: selectedFile?.name,
           consentToProcess: hasConsent
@@ -471,7 +489,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
           {inputMode === 'audio' && (
             <div className="p-6 bg-slate-50 border border-slate-200/80 rounded-[18px] text-center space-y-4">
               <p className="text-xs text-slate-600 font-medium max-w-lg mx-auto">
-                Graba tu relato de voz explicando la situación que viviste o estás presenciando durante el control policial.
+                Graba tu consulta (máximo 30 segundos). Gemma interpretará el audio directamente.
               </p>
 
               <div className="flex flex-col items-center justify-center gap-3">
@@ -533,7 +551,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
                     Sube una foto de tu DNI, Acta de Intervención o Documento Oficial
                   </p>
                   <p className="text-[11px] text-slate-500">
-                    Soporta imágenes JPG, PNG (foto directa de cámara o documento)
+                    Soporta JPG, PNG o WebP, hasta 5 MB
                   </p>
                 </label>
               </div>
@@ -623,7 +641,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
             <Sparkles className="w-6 h-6 animate-spin" />
           </div>
           <div>
-            <h3 className="font-bold text-lg text-white">Verificando Normativa Oficial</h3>
+            <h3 className="font-bold text-lg text-white">Procesando con el agente HablaPE</h3>
             <p className="text-xs text-slate-300 mt-1">{loadingStep}</p>
           </div>
           <div className="max-w-md mx-auto bg-slate-800 h-1.5 rounded-full overflow-hidden">
@@ -651,6 +669,17 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
                 }`}>
                   Riesgo: {queryResult.scenario.riskLevel.toUpperCase()}
                 </span>
+                {queryResult.backendMeta?.answerMode && (
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-sky-50 text-sky-800 border border-sky-200">
+                    {queryResult.backendMeta.answerMode === 'rag_gemma'
+                      ? 'RAG + Gemma'
+                      : queryResult.backendMeta.answerMode === 'direct_gemma'
+                      ? 'Gemma directo'
+                      : queryResult.backendMeta.answerMode === 'blocked'
+                      ? 'Sin respuesta validada'
+                      : 'Motor determinístico'}
+                  </span>
+                )}
               </div>
               <h2 className="text-xl font-extrabold text-slate-900">
                 {queryResult.scenario.category}
@@ -685,7 +714,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
               <Info className="w-4 h-4 text-blue-600" />
-              Hechos Identificados en la Intervención
+              Contexto interpretado
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -721,8 +750,11 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
             </div>
 
             {/* Rights & Duties Grid */}
+            {(queryResult.explanation.citizenRights.length > 0 ||
+              queryResult.explanation.whatPoliceCannotDo.length > 0) && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Citizen Rights */}
+              {queryResult.explanation.citizenRights.length > 0 && (
               <div className="p-4 bg-emerald-50/60 border border-emerald-200/80 rounded-xl space-y-2">
                 <h4 className="text-xs font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
@@ -737,6 +769,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
                   ))}
                 </ul>
               </div>
+              )}
 
               {queryResult.explanation.whatPoliceCannotDo.length > 0 && (
                 <div className="p-4 bg-amber-50/60 border border-amber-200/80 rounded-xl space-y-2">
@@ -755,8 +788,10 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
                 </div>
               )}
             </div>
+            )}
 
             {/* Action Plan */}
+            {queryResult.explanation.whatToDo.length > 0 && (
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
               <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                 💡 Recomendaciones de Acción Inmediata:
@@ -772,6 +807,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
                 ))}
               </div>
             </div>
+            )}
           </div>
 
           {/* Sources stay separate from the generated explanation. */}

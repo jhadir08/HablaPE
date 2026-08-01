@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from langchain_core.documents import Document
-from langchain_google_vertexai import VertexAIEmbeddings, VectorSearchVectorStore
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_google_vertexai import VectorSearchVectorStore
 
 from .models import CorpusChunk
 
@@ -9,7 +10,12 @@ from .models import CorpusChunk
 def build_vector_store(
     *, project_id: str, location: str, collection_id: str
 ) -> VectorSearchVectorStore:
-    embeddings = VertexAIEmbeddings(model_name="gemini-embedding-001")
+    embeddings = GoogleGenerativeAIEmbeddings(
+        model="gemini-embedding-001",
+        project=project_id,
+        location=location,
+        vertexai=True,
+    )
     return VectorSearchVectorStore.from_components(
         project_id=project_id,
         region=location,

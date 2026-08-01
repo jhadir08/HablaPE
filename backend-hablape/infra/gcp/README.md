@@ -116,24 +116,22 @@ Desde la raíz del repositorio:
 export GOOGLE_CLOUD_PROJECT=project-c8477605-3a1f-4178-a00
 export GOOGLE_CLOUD_LOCATION=us-central1
 
-# Para iniciar sin modelo generativo:
-export HABLAPE_MODEL_PROVIDER=rules
-
-bash backend-hablape/infra/gcp/deploy-stack.sh
-```
-
-Para usar el endpoint Gemma ya desplegado:
-
-```bash
-export HABLAPE_MODEL_PROVIDER=vertex
+export HABLAPE_MODEL_PROVIDER=agent
 export HABLAPE_GEMMA_ENDPOINT_ID=REEMPLAZAR_CON_ENDPOINT_ID
+export HABLAPE_GEMMA_REQUEST_SCHEMA=prompt
+export HABLAPE_GEMMA_MEDIA_SCHEMA=auto
+export HABLAPE_VECTOR_COLLECTION_ID=hablape-corpus
 
 bash backend-hablape/infra/gcp/deploy-stack.sh
 ```
 
 El ID de endpoint no es una clave secreta. El backend construye la URL regional
 de predicción y se autentica mediante su cuenta de servicio. Esa cuenta necesita
-`roles/aiplatform.user`.
+`roles/aiplatform.user`. En modo `agent`, Gemma decide entre respuesta directa
+y RAG; las cuestiones jurídicas recuperan evidencia de Vector Search.
+
+Para una prueba local sin GCP todavía puede usarse
+`HABLAPE_MODEL_PROVIDER=rules`, pero ese modo no ejecuta el agente adaptativo.
 
 Variables opcionales del script:
 
@@ -144,6 +142,10 @@ HABLAPE_FRONTEND_SERVICE=hablape-web
 HABLAPE_BACKEND_SERVICE_ACCOUNT=hablape-api
 HABLAPE_FRONTEND_SERVICE_ACCOUNT=hablape-web
 HABLAPE_TRACE_PROVIDER=memory|firestore
+HABLAPE_GEMMA_REQUEST_SCHEMA=prompt|vllm
+HABLAPE_GEMMA_MEDIA_SCHEMA=auto|gemma4|inline_data
+HABLAPE_VECTOR_COLLECTION_ID=hablape-corpus
+HABLAPE_RAG_TOP_K=6
 ```
 
 Al terminar, el script imprime las dos URLs. Verifica la conexión usando la URL
@@ -156,4 +158,23 @@ FRONTEND_URL="$(gcloud run services describe hablape-web \
   --format='value(status.url)')"
 curl "$FRONTEND_URL/api/health"
 ```
+
+Prueba después las dos rutas del agente. La primera debe devolver
+`answerMode=direct_gemma` sin fuentes y la segunda `answerMode=rag_gemma` con
+chunks recuperados:
+
+```bash
+curl -sS -X POST "$FRONTEND_URL/api/query" \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"¿Qué es el IMEI?","mode":"text","consentToProcess":true}'
+
+curl -sS -X POST "$FRONTEND_URL/api/query" \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"¿La policía puede revisar mi IMEI?","mode":"text","consentToProcess":true}'
+```
+
+Finalmente prueba una imagen JPG/PNG/WebP y un audio de hasta 30 segundos desde
+la interfaz. Si el endpoint personalizado responde HTTP 400 en ambos contratos
+multimedia, hay que adaptar su handler de predicción; la capacidad del modelo
+Gemma 4 no define por sí sola el JSON que acepta ese contenedor.
 

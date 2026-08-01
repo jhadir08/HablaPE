@@ -35,6 +35,13 @@ class Settings:
     google_cloud_project: str | None
     google_cloud_location: str
     vertex_endpoint: str | None
+    gemma_endpoint_id: str | None
+    gemma_request_schema: str
+    gemma_media_schema: str
+    vector_collection_id: str
+    rag_top_k: int
+    max_image_bytes: int
+    max_audio_bytes: int
     firestore_database: str
 
     @property
@@ -47,15 +54,34 @@ class Settings:
         environment = os.getenv("HABLAPE_ENV", "local").lower()
         model_provider = os.getenv("HABLAPE_MODEL_PROVIDER", "rules").lower()
         trace_provider = os.getenv("HABLAPE_TRACE_PROVIDER", "memory").lower()
+        gemma_request_schema = os.getenv(
+            "HABLAPE_GEMMA_REQUEST_SCHEMA", "prompt"
+        ).lower()
+        gemma_media_schema = os.getenv(
+            "HABLAPE_GEMMA_MEDIA_SCHEMA", "auto"
+        ).lower()
+        rag_top_k = int(os.getenv("HABLAPE_RAG_TOP_K", "6"))
 
         if environment not in {"local", "test", "production"}:
             raise ValueError("HABLAPE_ENV debe ser local, test o production.")
-        if model_provider not in {"rules", "vertex"}:
-            raise ValueError("HABLAPE_MODEL_PROVIDER debe ser rules o vertex.")
+        if model_provider not in {"rules", "vertex", "agent"}:
+            raise ValueError(
+                "HABLAPE_MODEL_PROVIDER debe ser rules, vertex o agent."
+            )
         if trace_provider not in {"memory", "firestore"}:
             raise ValueError(
                 "HABLAPE_TRACE_PROVIDER debe ser memory o firestore."
             )
+        if gemma_request_schema not in {"prompt", "vllm"}:
+            raise ValueError(
+                "HABLAPE_GEMMA_REQUEST_SCHEMA debe ser prompt o vllm."
+            )
+        if gemma_media_schema not in {"auto", "gemma4", "inline_data"}:
+            raise ValueError(
+                "HABLAPE_GEMMA_MEDIA_SCHEMA debe ser auto, gemma4 o inline_data."
+            )
+        if not 1 <= rag_top_k <= 20:
+            raise ValueError("HABLAPE_RAG_TOP_K debe estar entre 1 y 20.")
 
         return cls(
             app_name="HablaPE API",
@@ -86,6 +112,21 @@ class Settings:
                 "GOOGLE_CLOUD_LOCATION", "us-central1"
             ),
             vertex_endpoint=os.getenv("HABLAPE_VERTEX_ENDPOINT"),
+            gemma_endpoint_id=(
+                os.getenv("HABLAPE_GEMMA_ENDPOINT_ID", "").strip() or None
+            ),
+            gemma_request_schema=gemma_request_schema,
+            gemma_media_schema=gemma_media_schema,
+            vector_collection_id=os.getenv(
+                "HABLAPE_VECTOR_COLLECTION_ID", "hablape-corpus"
+            ),
+            rag_top_k=rag_top_k,
+            max_image_bytes=int(
+                os.getenv("HABLAPE_MAX_IMAGE_BYTES", str(5 * 1024 * 1024))
+            ),
+            max_audio_bytes=int(
+                os.getenv("HABLAPE_MAX_AUDIO_BYTES", str(8 * 1024 * 1024))
+            ),
             firestore_database=os.getenv(
                 "HABLAPE_FIRESTORE_DATABASE", "(default)"
             ),

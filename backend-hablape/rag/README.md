@@ -30,11 +30,14 @@ Google Drive compartido
   -> JSONL versionable en Cloud Storage
   -> gemini-embedding-001
   -> Vertex AI Vector Search 2.0
-  -> LangGraph: clasificar -> recuperar -> explicar con Gemma -> validar citas
+  -> LangGraph: comprender -> decidir direct/RAG -> recuperar si aplica
+                -> explicar con Gemma -> adjuntar citas deterministas
 ```
 
-El modelo solo explica chunks recuperados. Los plazos, competencia, vigencia y
-canales deben continuar bajo los validadores deterministas del backend actual.
+Gemma puede conversar directamente cuando la pregunta no necesita respaldo
+jurídico. Si sí lo necesita, el agente recupera chunks oficiales y el backend
+adjunta sus IDs; Gemma no selecciona citas. Los plazos, competencia, vigencia y
+canales continúan bajo validadores deterministas.
 
 ## Preparar Workbench
 
@@ -106,13 +109,18 @@ model = GemmaVertexEndpoint(
     request_schema="vllm",  # use "prompt" si así fue desplegado el contenedor
 )
 graph = build_hablape_graph(vector_store=store, model=model)
-result = graph.invoke({"question": "¿Cuándo puede la Policía pedirme el DNI?"})
+result = graph.invoke({
+    "question": "¿Cuándo puede la Policía pedirme el DNI?",
+    "media": [],
+})
 print(result["answer"])
 ```
 
-El adaptador admite los dos contratos comunes de Model Garden (`inputs` para
-vLLM o `prompt`). Confirme el contrato exacto en la tarjeta del modelo Gemma
-que despliegue antes de ejecutar inferencia.
+El adaptador admite `inputs` para vLLM o `prompt` para el contenedor ya probado.
+Para imagen/audio ofrece `auto`, `gemma4` e `inline_data`; `auto` reintenta el
+segundo formato únicamente si el primero recibe HTTP 400.
+Vertex no impone un esquema universal a contenedores personalizados: confirme
+el contrato del handler desplegado y ejecute el smoke test antes de publicar.
 
 ## Pruebas locales
 

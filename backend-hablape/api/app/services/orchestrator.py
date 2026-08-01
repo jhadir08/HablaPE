@@ -6,6 +6,7 @@ from uuid import uuid4
 from app.config import Settings
 from app.schemas import (
     AnswerBlocks,
+    AnswerMode,
     ComplaintDraftRequest,
     ComplaintDraftResponse,
     Journey,
@@ -154,6 +155,7 @@ class OrientationOrchestrator:
         )
         response = OrientationResponse(
             request_id=request_id,
+            answer_mode=AnswerMode.DETERMINISTIC,
             journey=classification.journey,
             urgency=classification.urgency,
             flags=list(classification.flags),

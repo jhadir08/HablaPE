@@ -3,4 +3,8 @@ google-cloud-aiplatform==1.163.0
 google-cloud-firestore==2.28.0
 google-cloud-speech==2.40.0
 google-cloud-storage==3.13.0
+langchain>=1.0,<2
+langchain-google-genai>=4.0,<5
+langchain-google-vertexai>=3.2,<4
+langgraph>=1.0,<2
 

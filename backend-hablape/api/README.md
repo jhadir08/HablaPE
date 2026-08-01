@@ -1,19 +1,23 @@
 # HablaPE API
 
-Backend FastAPI para orientación procedimental trazable. La primera versión
-implementa texto y borradores; audio y extracción documental se habilitarán
-cuando estén configurados los servicios de GCP.
+Backend FastAPI para conversación y orientación procedimental trazable. En
+producción, Gemma 4 comprende texto, imagen o audio y el agente elige entre una
+respuesta directa y una respuesta respaldada por Vertex AI Vector Search.
 
 ## Flujo
 
-1. Valida consentimiento y tamaño de entrada.
-2. Detecta posibles datos personales sin persistir el relato.
-3. Clasifica el escenario con reglas conservadoras.
-4. Recupera únicamente chunks aprobados del corpus.
-5. Adjunta citas, plazos y acciones desde reglas deterministas.
-6. Redacta la explicación mediante reglas locales o un endpoint Vertex.
-7. Ejecuta validadores de alcance, citas y vigencia.
-8. Registra solo metadatos de la ejecución, nunca el relato.
+1. Valida consentimiento, MIME type, duración y tamaño sin persistir archivos.
+2. Gemma interpreta la entrada multimodal y normaliza la consulta.
+3. Gemma propone `direct`, `rag` o `blocked`; una compuerta conservadora obliga
+   a usar RAG cuando se solicitan reglas, facultades, procedimientos o plazos.
+4. En `direct`, Gemma conversa sin presentar afirmaciones como normas vigentes.
+5. En `rag`, Vector Search recupera solo chunks oficiales y no sintéticos.
+6. Gemma explica la evidencia; el backend, no el modelo, asigna los `chunk_id`.
+7. Registra solo metadatos de la ejecución, nunca el relato ni el archivo.
+
+La respuesta expone `answer_mode=direct_gemma|rag_gemma|blocked`, por lo que el
+frontend puede diferenciar una conversación general de una orientación con
+fuentes oficiales.
 
 ## Ejecutar
 
@@ -68,11 +72,16 @@ Application Default Credentials. No se configura
 Variables de producción:
 
 - `HABLAPE_ENV=production`
-- `HABLAPE_MODEL_PROVIDER=rules|vertex`
+- `HABLAPE_MODEL_PROVIDER=rules|vertex|agent` (`agent` en Cloud Run)
 - `HABLAPE_TRACE_PROVIDER=memory|firestore`
 - `GOOGLE_CLOUD_PROJECT`
 - `GOOGLE_CLOUD_LOCATION`
 - `HABLAPE_VERTEX_ENDPOINT`
+- `HABLAPE_GEMMA_ENDPOINT_ID`
+- `HABLAPE_GEMMA_REQUEST_SCHEMA=prompt|vllm`
+- `HABLAPE_GEMMA_MEDIA_SCHEMA=auto|gemma4|inline_data`
+- `HABLAPE_VECTOR_COLLECTION_ID`
+- `HABLAPE_RAG_TOP_K`
 - `HABLAPE_CORS_ORIGINS`
 
 Construir desde la raíz:
@@ -80,4 +89,10 @@ Construir desde la raíz:
 ```powershell
 docker build -f api/Dockerfile -t hablape-api .
 ```
+
+El esquema de entrada de un endpoint personalizado de Vertex depende del
+contenedor de predicción. `gemma4` envía `prompt`, `images` y `audios` con bytes
+base64; `inline_data` envía partes con `inline_data`. `auto` prueba el segundo
+contrato solo cuando el primero recibe HTTP 400. El contenedor de Gemma debe
+implementar al menos uno de ellos.
 

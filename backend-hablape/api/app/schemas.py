@@ -1,13 +1,22 @@
 from __future__ import annotations
 
+import base64
+import binascii
 from datetime import date, datetime, timezone
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 
 class Journey(StrEnum):
+    GENERAL = "general"
     IDENTITY = "identidad"
     CONSUMER = "consumo"
     SECTORAL_CONSUMER = "consumo_sectorial"
@@ -22,20 +31,64 @@ class Urgency(StrEnum):
 
 class InputChannel(StrEnum):
     TEXT = "text"
+    AUDIO = "audio"
+    IMAGE = "image"
     VOICE_TRANSCRIPT = "voice_transcript"
     DOCUMENT_EXTRACT = "document_extract"
+
+
+class AnswerMode(StrEnum):
+    DETERMINISTIC = "deterministic"
+    DIRECT_GEMMA = "direct_gemma"
+    RAG_GEMMA = "rag_gemma"
+    BLOCKED = "blocked"
+
+
+class MediaInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    mime_type: str = Field(min_length=3, max_length=100)
+    data_base64: str = Field(min_length=4)
+    file_name: str | None = Field(default=None, max_length=200)
+    duration_seconds: float | None = Field(default=None, gt=0, le=30)
+
+    @field_validator("data_base64")
+    @classmethod
+    def valid_base64(cls, value: str) -> str:
+        try:
+            base64.b64decode(value, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise ValueError("El contenido multimedia no es base64 válido.") from exc
+        return value
+
+    def decoded_size(self) -> int:
+        return len(base64.b64decode(self.data_base64, validate=True))
 
 
 class OrientationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
-    text: str = Field(min_length=4, max_length=4000)
+    text: str = Field(default="", max_length=4000)
     channel: InputChannel = InputChannel.TEXT
+    image: MediaInput | None = None
+    audio: MediaInput | None = None
     confirmed_facts: dict[str, str | int | float | bool | None] = Field(
         default_factory=dict
     )
     consent_to_process: bool = False
     is_synthetic: bool = False
+
+    @model_validator(mode="after")
+    def require_input(self) -> "OrientationRequest":
+        if len(self.text.strip()) < 2 and self.image is None and self.audio is None:
+            raise ValueError(
+                "Incluye texto, una imagen o un audio para procesar la consulta."
+            )
+        if self.image is not None and not self.image.mime_type.startswith("image/"):
+            raise ValueError("El campo image requiere un MIME type de imagen.")
+        if self.audio is not None and not self.audio.mime_type.startswith("audio/"):
+            raise ValueError("El campo audio requiere un MIME type de audio.")
+        return self
 
     @field_validator("confirmed_facts")
     @classmethod
@@ -104,6 +157,7 @@ class ResponseMeta(BaseModel):
 
 class OrientationResponse(BaseModel):
     request_id: str
+    answer_mode: AnswerMode = AnswerMode.DETERMINISTIC
     journey: Journey
     urgency: Urgency
     flags: list[str]

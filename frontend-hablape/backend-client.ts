@@ -19,7 +19,8 @@ type BackendSource = {
 
 export type BackendOrientation = {
   request_id: string;
-  journey: "identidad" | "consumo" | "consumo_sectorial" | "fuera_de_alcance";
+  answer_mode: "deterministic" | "direct_gemma" | "rag_gemma" | "blocked";
+  journey: "general" | "identidad" | "consumo" | "consumo_sectorial" | "fuera_de_alcance";
   urgency: "normal" | "revisar_pronto" | "urgente";
   flags: string[];
   blocks: {
@@ -119,7 +120,7 @@ export async function requestBackend<T>(
     response = await fetch(url, {
       ...init,
       headers,
-      signal: init.signal ?? AbortSignal.timeout(30_000),
+      signal: init.signal ?? AbortSignal.timeout(90_000),
     });
   } catch (error) {
     const detail = error instanceof Error ? error.message : "error de red";
@@ -151,6 +152,7 @@ export async function requestBackend<T>(
 
 function journeyLabel(journey: BackendOrientation["journey"]): string {
   const labels: Record<BackendOrientation["journey"], string> = {
+    general: "Conversación general con Gemma",
     identidad: "Control de identidad policial",
     consumo: "Reclamo de consumo",
     consumo_sectorial: "Reclamo de consumo con ruta sectorial",
@@ -173,6 +175,8 @@ export function adaptOrientationForFrontend(
 ) {
   const timestamp = orientation.meta.generated_at || new Date().toISOString();
   const failedValidations = orientation.validations.filter((item) => !item.passed);
+  const usesRag = orientation.answer_mode === "rag_gemma";
+  const isBlocked = orientation.answer_mode === "blocked";
 
   return {
     id: orientation.request_id,
@@ -181,11 +185,11 @@ export function adaptOrientationForFrontend(
     scenario: {
       category: journeyLabel(orientation.journey),
       riskLevel: riskLevel(orientation.urgency),
-      needsClarification: orientation.journey === "fuera_de_alcance",
+      needsClarification: isBlocked,
       missingFields: [],
       clarificationPrompt:
-        orientation.journey === "fuera_de_alcance"
-          ? "Describe una situación de control de identidad o un reclamo de consumo."
+        isBlocked
+          ? "Reformula la consulta o añade contexto para que pueda validarse."
           : undefined,
     },
     facts: orientation.blocks.user_facts.map((detail, index) => ({
@@ -222,24 +226,33 @@ export function adaptOrientationForFrontend(
           },
         ]
       : [],
-    limitations: (
-      "Orientación informativa basada en el corpus oficial de HablaPE. " +
-      "No constituye asesoría legal personalizada y requiere revisión humana " +
-      "antes de tomar una decisión importante."
-    ),
+    limitations: usesRag
+      ? (
+          "Orientación informativa basada en chunks oficiales recuperados por HablaPE. " +
+          "No constituye asesoría legal personalizada y requiere revisión humana " +
+          "antes de tomar una decisión importante."
+        )
+      : (
+          "Respuesta conversacional de Gemma sin búsqueda RAG ni fuentes jurídicas. " +
+          "No debe usarse como asesoría legal ni como confirmación de una norma vigente."
+        ),
     pipelineTrace: [
       {
-        id: "backend-classification",
-        title: "Clasificación del recorrido",
+        id: "backend-routing",
+        title: "Decisión del agente",
         status: "completed" as const,
-        details: `Recorrido: ${orientation.journey}; urgencia: ${orientation.urgency}.`,
+        details: `Modo: ${orientation.answer_mode}; recorrido: ${orientation.journey}.`,
         timestamp,
       },
       {
         id: "backend-grounding",
         title: "Recuperación de fuentes aprobadas",
-        status: orientation.sources.length ? ("completed" as const) : ("warning" as const),
-        details: `${orientation.sources.length} fuentes vinculadas por el backend.`,
+        status: usesRag
+          ? (orientation.sources.length ? ("completed" as const) : ("warning" as const))
+          : ("completed" as const),
+        details: usesRag
+          ? `${orientation.sources.length} chunks oficiales vinculados por el backend.`
+          : "El agente eligió respuesta directa; no se ejecutó Vector Search.",
         timestamp,
       },
       {
@@ -256,6 +269,7 @@ export function adaptOrientationForFrontend(
       apiVersion: orientation.meta.api_version,
       corpusVersion: orientation.meta.corpus_version,
       modelProvider: orientation.meta.model_provider,
+      answerMode: orientation.answer_mode,
       validations: orientation.validations,
       privacy: orientation.privacy,
     },

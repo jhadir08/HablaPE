@@ -43,9 +43,10 @@ HABLAPE_BACKEND_URL=http://127.0.0.1:8000
 HABLAPE_BACKEND_AUTH=none
 ```
 
-Abre `http://localhost:3000`. Para una consulta de texto se exige aceptación
-explícita del procesamiento temporal. Audio e imagen responden como capacidad
-pendiente hasta conectar sus servicios de GCP; no se simulan respuestas legales.
+Abre `http://localhost:3000`. Se exige aceptación explícita del procesamiento
+temporal. En producción, texto, audio e imagen pasan por el agente Gemma del
+backend. Las fuentes solo aparecen cuando `answer_mode=rag_gemma`; una respuesta
+directa no simula referencias jurídicas.
 
 ## Variables del frontend en Cloud Run
 
@@ -54,7 +55,6 @@ pendiente hasta conectar sus servicios de GCP; no se simulan respuestas legales.
 | `HABLAPE_BACKEND_URL` | URL `run.app` del backend privado, sin ruta final |
 | `HABLAPE_BACKEND_AUDIENCE` | La misma URL del backend usada como audiencia del ID token |
 | `HABLAPE_BACKEND_AUTH` | `id-token` |
-| `HABLAPE_ENABLE_LEGACY_AI` | `false` |
 | `PORT` | Inyectada por Cloud Run; el servidor la respeta |
 
 No configures claves de servicio ni `GOOGLE_APPLICATION_CREDENTIALS`. Cloud Run

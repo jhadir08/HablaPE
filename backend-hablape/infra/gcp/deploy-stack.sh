@@ -9,8 +9,12 @@ BACKEND_SERVICE="${HABLAPE_BACKEND_SERVICE:-hablape-api}"
 FRONTEND_SERVICE="${HABLAPE_FRONTEND_SERVICE:-hablape-web}"
 BACKEND_SA_NAME="${HABLAPE_BACKEND_SERVICE_ACCOUNT:-hablape-api}"
 FRONTEND_SA_NAME="${HABLAPE_FRONTEND_SERVICE_ACCOUNT:-hablape-web}"
-MODEL_PROVIDER="${HABLAPE_MODEL_PROVIDER:-rules}"
+MODEL_PROVIDER="${HABLAPE_MODEL_PROVIDER:-agent}"
 TRACE_PROVIDER="${HABLAPE_TRACE_PROVIDER:-memory}"
+GEMMA_REQUEST_SCHEMA="${HABLAPE_GEMMA_REQUEST_SCHEMA:-prompt}"
+GEMMA_MEDIA_SCHEMA="${HABLAPE_GEMMA_MEDIA_SCHEMA:-auto}"
+VECTOR_COLLECTION_ID="${HABLAPE_VECTOR_COLLECTION_ID:-hablape-corpus}"
+RAG_TOP_K="${HABLAPE_RAG_TOP_K:-6}"
 
 PROJECT_ID="$GOOGLE_CLOUD_PROJECT"
 BACKEND_SA="${BACKEND_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
@@ -79,10 +83,22 @@ BACKEND_ENV=(
   "HABLAPE_TRACE_PROVIDER=${TRACE_PROVIDER}"
   "GOOGLE_CLOUD_PROJECT=${PROJECT_ID}"
   "GOOGLE_CLOUD_LOCATION=${REGION}"
+  "GOOGLE_GENAI_USE_VERTEXAI=true"
 )
 
-if [[ "$MODEL_PROVIDER" == "vertex" ]]; then
-  : "${HABLAPE_GEMMA_ENDPOINT_ID:?Para vertex exporta HABLAPE_GEMMA_ENDPOINT_ID.}"
+if [[ "$MODEL_PROVIDER" == "agent" || "$MODEL_PROVIDER" == "vertex" ]]; then
+  : "${HABLAPE_GEMMA_ENDPOINT_ID:?Para usar Gemma exporta HABLAPE_GEMMA_ENDPOINT_ID.}"
+fi
+
+if [[ "$MODEL_PROVIDER" == "agent" ]]; then
+  BACKEND_ENV+=(
+    "HABLAPE_GEMMA_ENDPOINT_ID=${HABLAPE_GEMMA_ENDPOINT_ID}"
+    "HABLAPE_GEMMA_REQUEST_SCHEMA=${GEMMA_REQUEST_SCHEMA}"
+    "HABLAPE_GEMMA_MEDIA_SCHEMA=${GEMMA_MEDIA_SCHEMA}"
+    "HABLAPE_VECTOR_COLLECTION_ID=${VECTOR_COLLECTION_ID}"
+    "HABLAPE_RAG_TOP_K=${RAG_TOP_K}"
+  )
+elif [[ "$MODEL_PROVIDER" == "vertex" ]]; then
   VERTEX_ENDPOINT="https://${REGION}-aiplatform.googleapis.com/v1/projects/${PROJECT_ID}/locations/${REGION}/endpoints/${HABLAPE_GEMMA_ENDPOINT_ID}:predict"
   BACKEND_ENV+=("HABLAPE_VERTEX_ENDPOINT=${VERTEX_ENDPOINT}")
 fi
@@ -95,12 +111,12 @@ gcloud run deploy "$BACKEND_SERVICE" \
   --project "$PROJECT_ID" \
   --service-account "$BACKEND_SA" \
   --port 8080 \
-  --cpu 1 \
-  --memory 1Gi \
+  --cpu 2 \
+  --memory 2Gi \
   --concurrency 40 \
   --min-instances 0 \
   --max-instances 5 \
-  --timeout 60 \
+  --timeout 120 \
   --set-env-vars "$BACKEND_ENV_CSV" \
   --no-allow-unauthenticated \
   --quiet
@@ -131,7 +147,7 @@ gcloud run deploy "$FRONTEND_SERVICE" \
   --min-instances 0 \
   --max-instances 5 \
   --timeout 60 \
-  --set-env-vars "HABLAPE_BACKEND_URL=${BACKEND_URL},HABLAPE_BACKEND_AUDIENCE=${BACKEND_URL},HABLAPE_BACKEND_AUTH=id-token,HABLAPE_ENABLE_LEGACY_AI=false" \
+  --set-env-vars "HABLAPE_BACKEND_URL=${BACKEND_URL},HABLAPE_BACKEND_AUDIENCE=${BACKEND_URL},HABLAPE_BACKEND_AUTH=id-token" \
   --allow-unauthenticated \
   --quiet
 

@@ -78,18 +78,29 @@ async def lifespan(app: FastAPI):
     corpus = CorpusRepository(
         settings.corpus_manifest_path, settings.corpus_chunks_path
     )
-    model = build_model_runtime(settings)
     traces = build_trace_store(settings)
+    if settings.model_provider == "agent":
+        from app.services.adaptive_agent import build_adaptive_orchestrator
+
+        orchestrator = build_adaptive_orchestrator(
+            settings=settings,
+            corpus=corpus,
+            traces=traces,
+        )
+        model = orchestrator
+    else:
+        model = build_model_runtime(settings)
+        orchestrator = OrientationOrchestrator(
+            settings=settings,
+            corpus=corpus,
+            model=model,
+            traces=traces,
+        )
     app.state.settings = settings
     app.state.corpus = corpus
     app.state.model = model
     app.state.traces = traces
-    app.state.orchestrator = OrientationOrchestrator(
-        settings=settings,
-        corpus=corpus,
-        model=model,
-        traces=traces,
-    )
+    app.state.orchestrator = orchestrator
     yield
 
 
@@ -189,6 +200,7 @@ def capabilities(request: Request) -> CapabilitiesResponse:
         api_version=settings.api_version,
         environment=settings.environment,
         journeys=[
+            "general",
             "identidad",
             "consumo",
             "consumo_sectorial_con_derivacion_segura",
@@ -197,18 +209,39 @@ def capabilities(request: Request) -> CapabilitiesResponse:
             status="ready" if model.ready() else "not_ready",
             provider=model.provider_name,
             detail=(
-                "El modelo solo redacta explicaciones; reglas y citas son deterministas."
+                "Gemma selecciona conversación directa o RAG; las citas RAG "
+                "las asigna el backend desde los chunks recuperados."
+                if settings.model_provider == "agent"
+                else "El modelo solo redacta explicaciones; reglas y citas son deterministas."
             ),
         ),
         document_extraction=CapabilityStatus(
-            status="pending_gcp",
-            provider="vertex",
-            detail="Requiere bucket temporal, endpoint multimodal y política de borrado.",
+            status=(
+                "configured"
+                if settings.model_provider == "agent"
+                else "pending_gcp"
+            ),
+            provider="gemma-4",
+            detail=(
+                "La imagen se procesa en memoria por Gemma y no se persiste; "
+                "valida el contrato del contenedor con un smoke test."
+                if settings.model_provider == "agent"
+                else "Requiere un endpoint multimodal configurado."
+            ),
         ),
         speech_to_text=CapabilityStatus(
-            status="pending_gcp",
-            provider="speech-to-text-v2",
-            detail="Requiere proyecto, región y prueba de locale con audio peruano.",
+            status=(
+                "configured"
+                if settings.model_provider == "agent"
+                else "pending_gcp"
+            ),
+            provider="gemma-4-12b",
+            detail=(
+                "Gemma recibe el audio directamente; máximo 30 segundos y "
+                "contrato del contenedor sujeto a smoke test."
+                if settings.model_provider == "agent"
+                else "Requiere un endpoint multimodal configurado."
+            ),
         ),
         trace_store=CapabilityStatus(
             status="ready" if traces.ready() else "not_ready",

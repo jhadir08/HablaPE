@@ -74,6 +74,7 @@ export interface QueryResponse {
     apiVersion: string;
     corpusVersion: string;
     modelProvider: string;
+    answerMode: 'deterministic' | 'direct_gemma' | 'rag_gemma' | 'blocked';
     validations: Array<{ name: string; passed: boolean; reason: string }>;
     privacy: {
       possible_personal_data: string[];

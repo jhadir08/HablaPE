@@ -11,6 +11,7 @@ import {
 
 const orientation: BackendOrientation = {
   request_id: "request-123",
+  answer_mode: "rag_gemma",
   journey: "identidad",
   urgency: "revisar_pronto",
   flags: ["motivo_no_informado"],
@@ -95,6 +96,7 @@ test("requests FastAPI and keeps generated answer separate from sources", async 
   assert.equal(adapted.explanation.overview, orientation.blocks.plain_explanation);
   assert.equal(adapted.legalReferences.length, 1);
   assert.equal(adapted.legalReferences[0].chunkId, "chk-test");
+  assert.equal(adapted.backendMeta.answerMode, "rag_gemma");
   assert.equal(adapted.backendMeta.privacy.raw_input_persisted, false);
 });
 
