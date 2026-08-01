@@ -8,6 +8,7 @@ import {
   adaptOrientationForFrontend,
   BackendOrientation,
   BackendRequestError,
+  BackendTranscription,
   requestBackend,
 } from "./backend-client.js";
 
@@ -104,6 +105,130 @@ app.get("/api/scenarios", (_req, res) => {
   res.json({ success: true, data: FREQUENT_SCENARIOS });
 });
 
+// Audio is transcribed separately so the legal agent receives editable text,
+// never an opaque media placeholder understood only by a custom model server.
+app.post(
+  "/api/transcribe",
+  express.raw({ type: "*/*", limit: "8mb" }),
+  async (req, res) => {
+    if (req.headers["x-consent-to-process"] !== "true") {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "consent_required",
+          message: "Debes aceptar el procesamiento temporal del audio.",
+        },
+      });
+    }
+
+    const mimeType = String(req.headers["content-type"] || "")
+      .split(";", 1)[0]
+      .toLowerCase();
+    const allowed = new Set([
+      "audio/webm",
+      "audio/wav",
+      "audio/x-wav",
+      "audio/mpeg",
+      "audio/mp4",
+      "audio/ogg",
+    ]);
+    if (!allowed.has(mimeType)) {
+      return res.status(415).json({
+        success: false,
+        error: {
+          code: "unsupported_audio",
+          message: "El audio debe ser WebM, WAV, MP3, MP4 u OGG.",
+        },
+      });
+    }
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+      return res.status(422).json({
+        success: false,
+        error: { code: "empty_audio", message: "La grabación está vacía." },
+      });
+    }
+
+    const durationHeader = req.headers["x-audio-duration-seconds"];
+    const duration = durationHeader === undefined
+      ? undefined
+      : Number(durationHeader);
+    if (duration !== undefined && (!Number.isFinite(duration) || duration <= 0)) {
+      return res.status(422).json({
+        success: false,
+        error: {
+          code: "invalid_audio_duration",
+          message: "La duración declarada del audio no es válida.",
+        },
+      });
+    }
+    if (duration !== undefined && duration > 30) {
+      return res.status(413).json({
+        success: false,
+        error: {
+          code: "audio_too_long",
+          message: "El audio no puede superar 30 segundos.",
+        },
+      });
+    }
+
+    try {
+      const transcription = await requestBackend<BackendTranscription>(
+        "/v1/transcriptions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": mimeType,
+            "X-Consent-To-Process": "true",
+            ...(duration === undefined
+              ? {}
+              : { "X-Audio-Duration-Seconds": String(duration) }),
+          },
+          body: req.body,
+        },
+      );
+      return res.json(transcription);
+    } catch (error) {
+      if (error instanceof BackendRequestError) {
+        return res.status(error.status).json({
+          success: false,
+          error: {
+            code: error.code,
+            message: error.message,
+            requestId: error.requestId,
+          },
+        });
+      }
+      console.error("[HablaPE BFF] unexpected_transcription_error");
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: "transcription_error",
+          message: "No se pudo transcribir el audio.",
+        },
+      });
+    }
+  },
+);
+
+app.use((error: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (
+    typeof error === "object"
+    && error !== null
+    && "type" in error
+    && error.type === "entity.too.large"
+  ) {
+    res.status(413).json({
+      success: false,
+      error: {
+        code: "audio_too_large",
+        message: "El audio supera el tamaño máximo permitido.",
+      },
+    });
+    return;
+  }
+  next(error);
+});
+
 // Browser -> same-origin Express BFF -> private FastAPI Cloud Run service.
 app.post("/api/query", async (req, res) => {
   const {
@@ -111,9 +236,7 @@ app.post("/api/query", async (req, res) => {
     mode = "text",
     fileName,
     consentToProcess,
-    audioBase64,
     imageBase64,
-    audioDurationSeconds,
     language: requestedLanguage,
     idioma,
   } = req.body ?? {};
@@ -165,68 +288,51 @@ app.post("/api/query", async (req, res) => {
     mime_type: string;
     data_base64: string;
     file_name?: string;
-    duration_seconds?: number;
   };
-  const parseMedia = (
+  const parseImage = (
     value: unknown,
-    kind: "audio" | "image",
     maxBytes: number,
   ): ParsedMedia | undefined => {
     if (typeof value !== "string" || !value) return undefined;
     const comma = value.indexOf(",");
     const header = comma >= 0 ? value.slice(0, comma) : "";
     const data = comma >= 0 ? value.slice(comma + 1) : "";
-    if (!header.startsWith(`data:${kind}/`) || !header.endsWith(";base64") || !data) {
+    if (!header.startsWith("data:image/") || !header.endsWith(";base64") || !data) {
       throw new BackendRequestError(
-        `El ${kind === "audio" ? "audio" : "archivo de imagen"} no tiene un Data URL válido.`,
+        "El archivo de imagen no tiene un Data URL válido.",
         422,
-        `invalid_${kind}`,
+        "invalid_image",
       );
     }
     if (!/^[A-Za-z0-9+/]*={0,2}$/.test(data)) {
-      throw new BackendRequestError("El contenido base64 es inválido.", 422, `invalid_${kind}`);
+      throw new BackendRequestError("El contenido base64 es inválido.", 422, "invalid_image");
     }
     const mimeType = header.slice(5).split(";")[0].toLowerCase();
-    const allowed = kind === "image"
-      ? new Set(["image/jpeg", "image/png", "image/webp"])
-      : new Set(["audio/webm", "audio/wav", "audio/x-wav", "audio/mpeg", "audio/mp4", "audio/ogg"]);
+    const allowed = new Set(["image/jpeg", "image/png", "image/webp"]);
     if (!allowed.has(mimeType)) {
       throw new BackendRequestError(
-        `Formato de ${kind === "audio" ? "audio" : "imagen"} no admitido.`,
+        "Formato de imagen no admitido.",
         415,
-        `unsupported_${kind}`,
+        "unsupported_image",
       );
     }
     if (Buffer.byteLength(data, "base64") > maxBytes) {
       throw new BackendRequestError(
-        `El ${kind === "audio" ? "audio" : "archivo de imagen"} supera el tamaño permitido.`,
+        "El archivo de imagen supera el tamaño permitido.",
         413,
-        `${kind}_too_large`,
-      );
-    }
-    if (kind === "audio" && typeof audioDurationSeconds === "number" && audioDurationSeconds > 30) {
-      throw new BackendRequestError(
-        "El audio no puede superar 30 segundos.",
-        413,
-        "audio_too_long",
+        "image_too_large",
       );
     }
     return {
       mime_type: mimeType,
       data_base64: data,
       file_name: typeof fileName === "string" ? fileName.slice(0, 200) : undefined,
-      duration_seconds:
-        kind === "audio" && typeof audioDurationSeconds === "number"
-          ? audioDurationSeconds
-          : undefined,
     };
   };
 
-  let audio: ParsedMedia | undefined;
   let image: ParsedMedia | undefined;
   try {
-    audio = mode === "audio" ? parseMedia(audioBase64, "audio", 8 * 1024 * 1024) : undefined;
-    image = mode === "image" ? parseMedia(imageBase64, "image", 5 * 1024 * 1024) : undefined;
+    image = mode === "image" ? parseImage(imageBase64, 5 * 1024 * 1024) : undefined;
   } catch (error) {
     if (error instanceof BackendRequestError) {
       return res.status(error.status).json({
@@ -240,7 +346,7 @@ app.post("/api/query", async (req, res) => {
     });
   }
 
-  if (normalizedText.length < 2 && !audio && !image) {
+  if (normalizedText.length < 2 && !image) {
     return res.status(422).json({
       success: false,
       error: {
@@ -257,9 +363,8 @@ app.post("/api/query", async (req, res) => {
         method: "POST",
         body: JSON.stringify({
           text: normalizedText,
-          channel: mode,
+          channel: mode === "audio" ? "voice_transcript" : mode,
           image,
-          audio,
           confirmed_facts: {},
           consent_to_process: true,
           is_synthetic: false,

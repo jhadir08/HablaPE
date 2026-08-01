@@ -49,6 +49,17 @@ export type BackendOrientation = {
   };
 };
 
+export type BackendTranscription = {
+  request_id: string;
+  transcript: string;
+  language_code: string;
+  model: string;
+  provider: string;
+  confidence?: number | null;
+  duration_seconds?: number | null;
+  raw_audio_persisted: boolean;
+};
+
 type BackendErrorPayload = {
   error?: {
     code?: string;
@@ -110,7 +121,7 @@ export async function requestBackend<T>(
   const authorization = await authorizationHeader(url);
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
-  if (init.body) {
+  if (init.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
   if (authorization) {

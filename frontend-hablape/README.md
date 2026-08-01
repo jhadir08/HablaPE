@@ -7,6 +7,13 @@ Vertex AI ni necesita credenciales de Google. Las consultas siguen este flujo:
 Browser -> POST /api/query (Express) -> POST /v1/orientations (FastAPI)
 ```
 
+La voz usa un paso previo independiente:
+
+```text
+Browser audio/webm -> POST /api/transcribe -> Speech-to-Text V2
+                   -> transcripción editable -> POST /api/query
+```
+
 En Cloud Run, Express obtiene un ID token con su cuenta de servicio y llama al
 backend privado. La explicación generada y las fuentes aprobadas se mantienen
 como campos separados en la respuesta visual.
@@ -44,8 +51,8 @@ HABLAPE_BACKEND_AUTH=none
 ```
 
 Abre `http://localhost:3000`. Se exige aceptación explícita del procesamiento
-temporal. En producción, texto, audio e imagen pasan por el agente Gemma del
-backend. Las fuentes solo aparecen cuando `answer_mode=rag_gemma`; una respuesta
+temporal. En producción, el audio se transcribe sin persistirse y solo el texto
+confirmado pasa al agente Gemma. Las fuentes solo aparecen cuando `answer_mode=rag_gemma`; una respuesta
 directa no simula referencias jurídicas.
 
 El idioma elegido se guarda en el navegador y se envía como `language` al BFF.

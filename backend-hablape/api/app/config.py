@@ -40,6 +40,9 @@ class Settings:
     gemma_media_schema: str
     vector_collection_id: str
     rag_top_k: int
+    speech_location: str
+    speech_model: str
+    speech_language_codes: tuple[str, ...]
     max_image_bytes: int
     max_audio_bytes: int
     firestore_database: str
@@ -82,6 +85,13 @@ class Settings:
             )
         if not 1 <= rag_top_k <= 20:
             raise ValueError("HABLAPE_RAG_TOP_K debe estar entre 1 y 20.")
+        speech_language_codes = _csv(
+            "HABLAPE_SPEECH_LANGUAGE_CODES", "es-US"
+        )
+        if not speech_language_codes:
+            raise ValueError(
+                "HABLAPE_SPEECH_LANGUAGE_CODES requiere al menos un idioma."
+            )
 
         return cls(
             app_name="HablaPE API",
@@ -121,6 +131,9 @@ class Settings:
                 "HABLAPE_VECTOR_COLLECTION_ID", "hablape-corpus"
             ),
             rag_top_k=rag_top_k,
+            speech_location=os.getenv("HABLAPE_SPEECH_LOCATION", "us"),
+            speech_model=os.getenv("HABLAPE_SPEECH_MODEL", "chirp_3"),
+            speech_language_codes=speech_language_codes,
             max_image_bytes=int(
                 os.getenv("HABLAPE_MAX_IMAGE_BYTES", str(5 * 1024 * 1024))
             ),

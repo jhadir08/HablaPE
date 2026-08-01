@@ -6,6 +6,7 @@ import {
   adaptOrientationForFrontend,
   BackendOrientation,
   BackendRequestError,
+  BackendTranscription,
   requestBackend,
 } from "./backend-client.js";
 
@@ -52,11 +53,33 @@ const orientation: BackendOrientation = {
   },
 };
 
+let receivedAudio = Buffer.alloc(0);
+let receivedAudioContentType = "";
+
 const server = createServer((request, response) => {
   response.setHeader("Content-Type", "application/json");
   response.setHeader("X-Request-ID", "request-123");
   if (request.url === "/v1/orientations") {
     response.end(JSON.stringify(orientation));
+    return;
+  }
+  if (request.url === "/v1/transcriptions") {
+    const chunks: Buffer[] = [];
+    request.on("data", (chunk: Buffer) => chunks.push(chunk));
+    request.on("end", () => {
+      receivedAudio = Buffer.concat(chunks);
+      receivedAudioContentType = String(request.headers["content-type"] || "");
+      response.end(
+        JSON.stringify({
+          request_id: "request-audio",
+          transcript: "Un policía me pidió mi DNI.",
+          language_code: "es-US",
+          model: "chirp_3",
+          provider: "google-cloud-speech-v2",
+          raw_audio_persisted: false,
+        } satisfies BackendTranscription),
+      );
+    });
     return;
   }
   response.statusCode = 400;
@@ -111,6 +134,20 @@ test("propagates the backend error contract without leaking response details", a
       error.code === "consent_required" &&
       error.requestId === "request-error",
   );
+});
+
+test("preserves binary audio and its media type for Speech-to-Text", async () => {
+  const audio = Buffer.from([0x1a, 0x45, 0xdf, 0xa3]);
+  const result = await requestBackend<BackendTranscription>("/v1/transcriptions", {
+    method: "POST",
+    headers: { "Content-Type": "audio/webm" },
+    body: audio,
+  });
+
+  assert.deepEqual(receivedAudio, audio);
+  assert.equal(receivedAudioContentType, "audio/webm");
+  assert.equal(result.transcript, "Un policía me pidió mi DNI.");
+  assert.equal(result.raw_audio_persisted, false);
 });
 
 test("shows an attempted RAG retrieval as blocked instead of direct chat", () => {

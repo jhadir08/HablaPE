@@ -121,15 +121,18 @@ export HABLAPE_GEMMA_ENDPOINT_ID=REEMPLAZAR_CON_ENDPOINT_ID
 export HABLAPE_GEMMA_REQUEST_SCHEMA=prompt
 export HABLAPE_GEMMA_MEDIA_SCHEMA=auto
 export HABLAPE_VECTOR_COLLECTION_ID=hablape-corpus
+export HABLAPE_SPEECH_LOCATION=us
+export HABLAPE_SPEECH_MODEL=chirp_3
+export HABLAPE_SPEECH_LANGUAGE_CODES=es-US
 
 bash backend-hablape/infra/gcp/deploy-stack.sh
 ```
 
 El ID de endpoint no es una clave secreta. El backend construye la URL regional
 de predicción y se autentica mediante su cuenta de servicio. Esa cuenta necesita
-`roles/aiplatform.user`, `roles/vectorsearch.viewer` y
-`roles/cloudtranslate.user`. El script habilita Vertex AI, Vector Search y Cloud
-Translation. En modo `agent`, Gemma decide entre respuesta directa y RAG; las
+`roles/aiplatform.user`, `roles/vectorsearch.viewer`,
+`roles/cloudtranslate.user` y `roles/speech.client`. El script habilita Vertex
+AI, Vector Search, Cloud Translation y Speech-to-Text. En modo `agent`, Gemma decide entre respuesta directa y RAG; las
 cuestiones jurídicas recuperan evidencia de Vector Search. La interfaz admite
 `es`, `en`, `qu` y `ay`; la normativa oficial se muestra sin traducir.
 
@@ -149,6 +152,9 @@ HABLAPE_GEMMA_REQUEST_SCHEMA=prompt|vllm
 HABLAPE_GEMMA_MEDIA_SCHEMA=auto|gemma4|inline_data
 HABLAPE_VECTOR_COLLECTION_ID=hablape-corpus
 HABLAPE_RAG_TOP_K=6
+HABLAPE_SPEECH_LOCATION=us
+HABLAPE_SPEECH_MODEL=chirp_3
+HABLAPE_SPEECH_LANGUAGE_CODES=es-US
 ```
 
 Al terminar, el script imprime las dos URLs. Verifica la conexión usando la URL
@@ -181,7 +187,7 @@ curl -sS -X POST "$FRONTEND_URL/api/query" \
 ```
 
 Finalmente prueba una imagen JPG/PNG/WebP y un audio de hasta 30 segundos desde
-la interfaz. Si el endpoint personalizado responde HTTP 400 en ambos contratos
-multimedia, hay que adaptar su handler de predicción; la capacidad del modelo
-Gemma 4 no define por sí sola el JSON que acepta ese contenedor.
+la interfaz. El audio se transcribe primero con Speech-to-Text V2 y el texto
+editable entra después al agente. Aunque el modelo base sea multimodal, el
+formato que acepta cada solicitud depende del contenedor desplegado en Vertex AI.
 

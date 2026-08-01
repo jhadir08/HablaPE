@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 
 from app.config import Settings
 from app.schemas import (
@@ -22,10 +23,15 @@ from app.schemas import (
     OrientationRequest,
     OrientationResponse,
     SourceDocument,
+    TranscriptionResponse,
 )
 from app.services.corpus import CorpusRepository
 from app.services.models import build_model_runtime
 from app.services.orchestrator import DomainError, OrientationOrchestrator
+from app.services.speech import (
+    SpeechTranscriptionError,
+    build_speech_transcriber,
+)
 from app.services.traces import build_trace_store
 
 
@@ -80,6 +86,7 @@ async def lifespan(app: FastAPI):
         settings.corpus_manifest_path, settings.corpus_chunks_path
     )
     traces = build_trace_store(settings)
+    speech_transcriber = build_speech_transcriber(settings)
     if settings.model_provider == "agent":
         from app.services.adaptive_agent import build_adaptive_orchestrator
 
@@ -101,6 +108,7 @@ async def lifespan(app: FastAPI):
     app.state.corpus = corpus
     app.state.model = model
     app.state.traces = traces
+    app.state.speech_transcriber = speech_transcriber
     app.state.orchestrator = orchestrator
     yield
 
@@ -121,7 +129,12 @@ app.add_middleware(
     allow_origins=list(_bootstrap_settings.cors_origins),
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "X-Request-ID"],
+    allow_headers=[
+        "Content-Type",
+        "X-Request-ID",
+        "X-Consent-To-Process",
+        "X-Audio-Duration-Seconds",
+    ],
 )
 
 
@@ -197,6 +210,7 @@ def capabilities(request: Request) -> CapabilitiesResponse:
     settings: Settings = request.app.state.settings
     model = request.app.state.model
     traces = request.app.state.traces
+    speech_transcriber = request.app.state.speech_transcriber
     return CapabilitiesResponse(
         api_version=settings.api_version,
         environment=settings.environment,
@@ -237,17 +251,13 @@ def capabilities(request: Request) -> CapabilitiesResponse:
             ),
         ),
         speech_to_text=CapabilityStatus(
-            status=(
-                "configured"
-                if settings.model_provider == "agent"
-                else "pending_gcp"
-            ),
-            provider="gemma-4-12b",
+            status="configured" if speech_transcriber.ready() else "pending_gcp",
+            provider=speech_transcriber.provider_name,
             detail=(
-                "Gemma recibe el audio directamente; máximo 30 segundos y "
-                "contrato del contenedor sujeto a smoke test."
-                if settings.model_provider == "agent"
-                else "Requiere un endpoint multimodal configurado."
+                "Speech-to-Text V2 transcribe audio WebM en memoria; el usuario "
+                "puede corregir el texto antes de enviarlo al agente."
+                if speech_transcriber.ready()
+                else "Requiere GOOGLE_CLOUD_PROJECT y Speech-to-Text V2."
             ),
         ),
         trace_store=CapabilityStatus(
@@ -277,8 +287,123 @@ def list_sources(request: Request) -> list[SourceDocument]:
 def create_orientation(
     payload: OrientationRequest, request: Request
 ) -> OrientationResponse:
+    if payload.audio is not None:
+        raise DomainError(
+            "audio_requires_transcription",
+            "Transcribe primero el audio mediante /v1/transcriptions y confirma el texto.",
+            422,
+        )
     return request.app.state.orchestrator.orient(
         payload, request.state.request_id
+    )
+
+
+_ALLOWED_TRANSCRIPTION_MIME = {
+    "audio/webm",
+    "audio/wav",
+    "audio/x-wav",
+    "audio/mpeg",
+    "audio/mp4",
+    "audio/ogg",
+}
+
+
+@app.post(
+    "/v1/transcriptions",
+    response_model=TranscriptionResponse,
+    responses={
+        400: {"model": ErrorResponse},
+        413: {"model": ErrorResponse},
+        415: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+        503: {"model": ErrorResponse},
+    },
+    tags=["media"],
+)
+async def create_transcription(
+    request: Request,
+) -> TranscriptionResponse:
+    if request.headers.get("X-Consent-To-Process", "").lower() != "true":
+        raise DomainError(
+            "consent_required",
+            "Debes aceptar el procesamiento temporal del audio.",
+        )
+
+    mime_type = request.headers.get("Content-Type", "").split(";", 1)[0].lower()
+    if mime_type not in _ALLOWED_TRANSCRIPTION_MIME:
+        raise DomainError(
+            "unsupported_audio",
+            "El audio debe ser WebM, WAV, MP3, MP4 u OGG.",
+            415,
+        )
+
+    settings: Settings = request.app.state.settings
+    content_length = request.headers.get("Content-Length")
+    if content_length:
+        try:
+            if int(content_length) > settings.max_audio_bytes:
+                raise DomainError(
+                    "audio_too_large",
+                    "El audio supera el tamaño máximo permitido.",
+                    413,
+                )
+        except ValueError as exc:
+            raise DomainError(
+                "invalid_content_length",
+                "El tamaño declarado del audio no es válido.",
+                422,
+            ) from exc
+
+    duration: float | None = None
+    duration_header = request.headers.get("X-Audio-Duration-Seconds")
+    if duration_header:
+        try:
+            duration = float(duration_header)
+        except ValueError as exc:
+            raise DomainError(
+                "invalid_audio_duration",
+                "La duración declarada del audio no es válida.",
+                422,
+            ) from exc
+        if duration <= 0:
+            raise DomainError(
+                "invalid_audio_duration",
+                "La duración del audio debe ser positiva.",
+                422,
+            )
+        if duration > 30:
+            raise DomainError(
+                "audio_too_long",
+                "El audio no puede superar 30 segundos.",
+                413,
+            )
+
+    audio = await request.body()
+    if not audio:
+        raise DomainError("empty_audio", "La grabación está vacía.", 422)
+    if len(audio) > settings.max_audio_bytes:
+        raise DomainError(
+            "audio_too_large",
+            "El audio supera el tamaño máximo permitido.",
+            413,
+        )
+
+    try:
+        transcript = await run_in_threadpool(
+            request.app.state.speech_transcriber.transcribe, audio
+        )
+    except SpeechTranscriptionError as exc:
+        raise DomainError(exc.code, exc.message, exc.status_code) from exc
+
+    return TranscriptionResponse(
+        request_id=request.state.request_id,
+        transcript=transcript.text,
+        language_code=transcript.language_code,
+        model=transcript.model,
+        provider=transcript.provider,
+        confidence=transcript.confidence,
+        duration_seconds=duration,
+        raw_audio_persisted=False,
     )
 
 

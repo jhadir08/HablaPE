@@ -12,6 +12,25 @@ os.environ["HABLAPE_MODEL_PROVIDER"] = "rules"
 os.environ["HABLAPE_TRACE_PROVIDER"] = "memory"
 
 from app.main import app  # noqa: E402
+from app.services.speech import SpeechTranscript  # noqa: E402
+
+
+class FakeSpeechTranscriber:
+    provider_name = "fake-speech-v2"
+
+    def ready(self) -> bool:
+        return True
+
+    def transcribe(self, audio: bytes) -> SpeechTranscript:
+        if audio != b"webm-opus-bytes":
+            raise AssertionError("El endpoint alteró los bytes de audio.")
+        return SpeechTranscript(
+            text="Un policía me pidió mi DNI.",
+            language_code="es-US",
+            model="chirp_3",
+            provider=self.provider_name,
+            confidence=0.9,
+        )
 
 
 class HablaPEApiTests(unittest.TestCase):
@@ -115,6 +134,29 @@ class HablaPEApiTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["error"]["code"], "consent_required")
+
+    def test_audio_is_transcribed_before_orientation(self) -> None:
+        original = self.client.app.state.speech_transcriber
+        self.client.app.state.speech_transcriber = FakeSpeechTranscriber()
+        try:
+            response = self.client.post(
+                "/v1/transcriptions",
+                content=b"webm-opus-bytes",
+                headers={
+                    "Content-Type": "audio/webm",
+                    "X-Consent-To-Process": "true",
+                    "X-Audio-Duration-Seconds": "4.2",
+                },
+            )
+        finally:
+            self.client.app.state.speech_transcriber = original
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["transcript"], "Un policía me pidió mi DNI.")
+        self.assertEqual(body["provider"], "fake-speech-v2")
+        self.assertEqual(body["duration_seconds"], 4.2)
+        self.assertFalse(body["raw_audio_persisted"])
 
     def test_complaint_draft_requires_confirmed_facts(self) -> None:
         base = {

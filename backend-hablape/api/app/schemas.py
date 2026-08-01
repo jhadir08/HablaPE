@@ -178,6 +178,17 @@ class OrientationResponse(BaseModel):
     meta: ResponseMeta
 
 
+class TranscriptionResponse(BaseModel):
+    request_id: str
+    transcript: str
+    language_code: str
+    model: str
+    provider: str
+    confidence: float | None = None
+    duration_seconds: float | None = None
+    raw_audio_persisted: bool = False
+
+
 class ComplaintDraftResponse(BaseModel):
     request_id: str
     draft: str

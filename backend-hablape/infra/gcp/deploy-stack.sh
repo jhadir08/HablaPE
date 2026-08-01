@@ -15,6 +15,9 @@ GEMMA_REQUEST_SCHEMA="${HABLAPE_GEMMA_REQUEST_SCHEMA:-prompt}"
 GEMMA_MEDIA_SCHEMA="${HABLAPE_GEMMA_MEDIA_SCHEMA:-auto}"
 VECTOR_COLLECTION_ID="${HABLAPE_VECTOR_COLLECTION_ID:-hablape-corpus}"
 RAG_TOP_K="${HABLAPE_RAG_TOP_K:-6}"
+SPEECH_LOCATION="${HABLAPE_SPEECH_LOCATION:-us}"
+SPEECH_MODEL="${HABLAPE_SPEECH_MODEL:-chirp_3}"
+SPEECH_LANGUAGE_CODES="${HABLAPE_SPEECH_LANGUAGE_CODES:-es-US}"
 
 PROJECT_ID="$GOOGLE_CLOUD_PROJECT"
 BACKEND_SA="${BACKEND_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
@@ -43,6 +46,7 @@ gcloud services enable \
   iamcredentials.googleapis.com \
   aiplatform.googleapis.com \
   vectorsearch.googleapis.com \
+  speech.googleapis.com \
   translate.googleapis.com \
   --project "$PROJECT_ID"
 
@@ -86,6 +90,12 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" \
   --condition=None \
   --quiet >/dev/null
 
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member "serviceAccount:${BACKEND_SA}" \
+  --role roles/speech.client \
+  --condition=None \
+  --quiet >/dev/null
+
 gcloud builds submit "$BACKEND_ROOT" \
   --config "$BACKEND_ROOT/cloudbuild.api.yaml" \
   --substitutions "_IMAGE=${BACKEND_IMAGE}" \
@@ -98,6 +108,9 @@ BACKEND_ENV=(
   "GOOGLE_CLOUD_PROJECT=${PROJECT_ID}"
   "GOOGLE_CLOUD_LOCATION=${REGION}"
   "GOOGLE_GENAI_USE_VERTEXAI=true"
+  "HABLAPE_SPEECH_LOCATION=${SPEECH_LOCATION}"
+  "HABLAPE_SPEECH_MODEL=${SPEECH_MODEL}"
+  "HABLAPE_SPEECH_LANGUAGE_CODES=${SPEECH_LANGUAGE_CODES}"
 )
 
 if [[ "$MODEL_PROVIDER" == "agent" || "$MODEL_PROVIDER" == "vertex" ]]; then

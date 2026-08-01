@@ -1,22 +1,25 @@
 # HablaPE API
 
 Backend FastAPI para conversación y orientación procedimental trazable. En
-producción, Gemma 4 comprende texto, imagen o audio y el agente elige entre una
-respuesta directa y una respuesta respaldada por Vertex AI Vector Search.
+producción, Speech-to-Text V2 convierte la voz en texto editable y Gemma elige
+entre una respuesta directa y una respuesta respaldada por Vertex AI Vector
+Search.
 
 ## Flujo
 
 1. Valida consentimiento, MIME type, duración y tamaño sin persistir archivos.
-2. Para inglés, quechua o aimara, Cloud Translation normaliza el texto al
-   español; Gemma interpreta imagen o audio directamente y normaliza la consulta.
-3. Gemma propone `direct`, `rag` o `blocked`; una compuerta conservadora obliga
+2. `/v1/transcriptions` convierte el audio binario en texto mediante Cloud
+   Speech-to-Text V2; la persona revisa la transcripción antes de consultar.
+3. Para inglés, quechua o aimara, Cloud Translation normaliza el texto al
+   español; Gemma puede interpretar una imagen si el contenedor lo permite.
+4. Gemma propone `direct`, `rag` o `blocked`; una compuerta conservadora obliga
    a usar RAG cuando se solicitan reglas, facultades, procedimientos o plazos.
-4. En `direct`, Gemma conversa sin presentar afirmaciones como normas vigentes.
-5. En `rag`, Vector Search recupera solo chunks oficiales y no sintéticos.
-6. Gemma explica la evidencia; el backend, no el modelo, asigna los `chunk_id`.
-7. Traduce la explicación y las acciones al idioma elegido, pero conserva sin
+5. En `direct`, Gemma conversa sin presentar afirmaciones como normas vigentes.
+6. En `rag`, Vector Search recupera solo chunks oficiales y no sintéticos.
+7. Gemma explica la evidencia; el backend, no el modelo, asigna los `chunk_id`.
+8. Traduce la explicación y las acciones al idioma elegido, pero conserva sin
    traducir los fragmentos, títulos y localizadores de las fuentes oficiales.
-8. Registra solo metadatos de la ejecución, nunca el relato ni el archivo.
+9. Registra solo metadatos de la ejecución, nunca el relato ni el archivo.
 
 La respuesta expone `answer_mode=direct_gemma|rag_gemma|blocked`, por lo que el
 frontend puede diferenciar una conversación general de una orientación con
@@ -55,6 +58,7 @@ se traduzcan.
 - `GET /health/ready`
 - `GET /v1/capabilities`
 - `GET /v1/sources`
+- `POST /v1/transcriptions`
 - `POST /v1/orientations`
 - `POST /v1/complaints/draft`
 
@@ -98,6 +102,9 @@ Variables de producción:
 - `HABLAPE_GEMMA_MEDIA_SCHEMA=auto|gemma4|inline_data`
 - `HABLAPE_VECTOR_COLLECTION_ID`
 - `HABLAPE_RAG_TOP_K`
+- `HABLAPE_SPEECH_LOCATION=us`
+- `HABLAPE_SPEECH_MODEL=chirp_3`
+- `HABLAPE_SPEECH_LANGUAGE_CODES=es-US`
 - `HABLAPE_CORS_ORIGINS`
 
 Construir desde la raíz:
@@ -106,9 +113,7 @@ Construir desde la raíz:
 docker build -f api/Dockerfile -t hablape-api .
 ```
 
-El esquema de entrada de un endpoint personalizado de Vertex depende del
-contenedor de predicción. `gemma4` envía `prompt`, `images` y `audios` con bytes
-base64; `inline_data` envía partes con `inline_data`. `auto` prueba el segundo
-contrato solo cuando el primero recibe HTTP 400. El contenedor de Gemma debe
-implementar al menos uno de ellos.
+El esquema de imagen de un endpoint personalizado de Vertex depende del
+contenedor de predicción. El audio no usa ese contrato: se procesa por
+Speech-to-Text V2 y `/v1/orientations` rechaza audio sin transcribir.
 

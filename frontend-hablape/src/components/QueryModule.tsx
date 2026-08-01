@@ -57,8 +57,10 @@ export const QueryModule: React.FC<QueryModuleProps> = ({
   // Audio recording state
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [audioBase64, setAudioBase64] = useState<string | null>(null);
+  const [audioTranscript, setAudioTranscript] = useState('');
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const recordingSecondsRef = useRef(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const timerRef = useRef<any>(null);
 
@@ -80,10 +82,56 @@ export const QueryModule: React.FC<QueryModuleProps> = ({
     'Soy ciudadano extranjero con Carnet CPP y me hicieron un control de identidad'
   ];
 
+  const transcribeAudio = async (blob: Blob, durationSeconds: number) => {
+    setIsTranscribing(true);
+    setErrorMessage(null);
+    setAudioTranscript('');
+    try {
+      const response = await fetch('/api/transcribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': blob.type || 'audio/webm',
+          'X-Consent-To-Process': 'true',
+          'X-Audio-Duration-Seconds': String(durationSeconds),
+        },
+        body: blob,
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(
+          payload?.error?.message || 'No se pudo transcribir la grabación.'
+        );
+      }
+      const transcript = String(payload?.transcript || '').trim();
+      if (!transcript) {
+        throw new Error('No se detectó una voz comprensible en la grabación.');
+      }
+      setAudioTranscript(transcript);
+      setInputText(transcript);
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo transcribir la grabación.'
+      );
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
   // Start recording voice input
   const startRecording = async () => {
+    if (!hasConsent) {
+      setErrorMessage(
+        'Acepta el procesamiento temporal antes de grabar el audio.'
+      );
+      return;
+    }
     try {
       setErrorMessage(null);
+      setAudioBlob(null);
+      setAudioTranscript('');
+      setInputText('');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
@@ -96,26 +144,27 @@ export const QueryModule: React.FC<QueryModuleProps> = ({
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
         setAudioBlob(audioBlob);
-
-        const reader = new FileReader();
-        reader.readAsDataURL(audioBlob);
-        reader.onloadend = () => {
-          const base64String = reader.result as string;
-          setAudioBase64(base64String);
-        };
+        void transcribeAudio(
+          audioBlob,
+          Math.max(recordingSecondsRef.current, 1)
+        );
       };
 
       mediaRecorder.start();
       setIsRecording(true);
       setRecordingSeconds(0);
+      recordingSecondsRef.current = 0;
 
       timerRef.current = setInterval(() => {
         setRecordingSeconds((prev) => {
           if (prev >= 29) {
+            recordingSecondsRef.current = 30;
             setTimeout(() => stopRecording(), 0);
             return 30;
           }
-          return prev + 1;
+          const next = prev + 1;
+          recordingSecondsRef.current = next;
+          return next;
         });
       }, 1000);
     } catch (err) {
@@ -158,7 +207,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({
 
   const handleSubmit = async (textToSubmit?: string) => {
     const textQuery = textToSubmit || inputText;
-    if (!textQuery.trim() && !audioBase64 && !filePreview) {
+    if (!textQuery.trim() && !filePreview) {
       return;
     }
     if (!hasConsent) {
@@ -196,8 +245,6 @@ export const QueryModule: React.FC<QueryModuleProps> = ({
         body: JSON.stringify({
           text: textQuery,
           mode: inputMode,
-          audioBase64: audioBase64,
-          audioDurationSeconds: recordingSeconds || undefined,
           imageBase64: filePreview,
           fileName: selectedFile?.name,
           consentToProcess: hasConsent,
@@ -503,7 +550,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({
           {inputMode === 'audio' && (
             <div className="p-6 bg-slate-50 border border-slate-200/80 rounded-[18px] text-center space-y-4">
               <p className="text-xs text-slate-600 font-medium max-w-lg mx-auto">
-                Graba tu consulta (máximo 30 segundos). Gemma interpretará el audio directamente.
+                Graba hasta 30 segundos. Speech-to-Text generará una transcripción que podrás revisar antes de consultar.
               </p>
 
               <div className="flex flex-col items-center justify-center gap-3">
@@ -528,9 +575,13 @@ export const QueryModule: React.FC<QueryModuleProps> = ({
                     <span className="text-sky-600 font-mono">
                       ● Grabando audio: {recordingSeconds}s
                     </span>
-                  ) : audioBase64 ? (
+                  ) : isTranscribing ? (
+                    <span className="text-sky-600">
+                      Transcribiendo la grabación con Speech-to-Text...
+                    </span>
+                  ) : audioTranscript ? (
                     <span className="text-emerald-600">
-                      ✓ Grabación lista ({Math.round((audioBlob?.size || 0) / 1024)} KB)
+                      ✓ Transcripción lista ({Math.round((audioBlob?.size || 0) / 1024)} KB)
                     </span>
                   ) : (
                     'Toca el micrófono para comenzar a grabar'
@@ -538,13 +589,22 @@ export const QueryModule: React.FC<QueryModuleProps> = ({
                 </div>
               </div>
 
-              <input
-                type="text"
+              <div className="text-left space-y-1.5">
+                <label className="block text-[11px] font-bold text-slate-600">
+                  Transcripción automática — revísala y corrígela si es necesario
+                </label>
+              <textarea
                 value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder="Añadir aclaración escrita adicional (Opcional)..."
-                className="w-full p-3 rounded-xl border border-slate-200 text-xs bg-white text-slate-800 outline-none focus:border-sky-500"
+                onChange={(e) => {
+                  setInputText(e.target.value);
+                  setAudioTranscript(e.target.value);
+                }}
+                placeholder="La transcripción aparecerá aquí después de grabar..."
+                rows={3}
+                disabled={isTranscribing}
+                className="w-full p-3 rounded-xl border border-slate-200 text-xs bg-white text-slate-800 outline-none focus:border-sky-500 disabled:bg-slate-100 resize-y"
               />
+              </div>
             </div>
           )}
 
@@ -629,7 +689,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({
 
             <button
               onClick={() => handleSubmit()}
-              disabled={isLoading || !hasConsent || (!inputText.trim() && !audioBase64 && !filePreview)}
+              disabled={isLoading || isTranscribing || !hasConsent || (!inputText.trim() && !filePreview)}
               className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs md:text-sm flex items-center justify-center gap-2 shadow-md transition-all hover:scale-[1.01] cursor-pointer"
             >
               {isLoading ? (
