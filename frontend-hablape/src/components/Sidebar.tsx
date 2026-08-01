@@ -10,53 +10,57 @@ import {
   X,
   FileCheck2
 } from 'lucide-react';
-import { NavigationTab } from '../types';
+import { Language, NavigationTab } from '../types';
+import { I18N_STRINGS } from '../data/i18n';
 
 interface SidebarProps {
   activeTab: NavigationTab;
   setActiveTab: (tab: NavigationTab) => void;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
+  language?: Language;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   setActiveTab,
   mobileOpen,
-  setMobileOpen
+  setMobileOpen,
+  language = 'es'
 }) => {
+  const t = I18N_STRINGS[language];
   const navItems = [
     {
       id: 'query' as NavigationTab,
-      label: 'Inicio',
-      sublabel: 'Consulta de Intervención',
+      label: t.navQuery,
+      sublabel: t.navQuerySub,
       icon: MessageSquareText,
       badge: 'Multimodal'
     },
     {
       id: 'corpus' as NavigationTab,
-      label: 'Normativa',
-      sublabel: 'Leyes y D.S. 012-2025-IN',
+      label: t.navCorpus,
+      sublabel: t.navCorpusSub,
       icon: BookOpen,
       badge: 'Oficial'
     },
     {
       id: 'scenarios' as NavigationTab,
-      label: 'Practicar',
-      sublabel: 'Simulador de Derechos',
+      label: t.navScenarios,
+      sublabel: t.navScenariosSub,
       icon: ShieldCheck,
       badge: 'Interactivo'
     },
     {
       id: 'history' as NavigationTab,
-      label: 'Mi Biblioteca',
-      sublabel: 'Consultas y guardados',
+      label: t.navHistory,
+      sublabel: t.navHistorySub,
       icon: History,
     },
     {
       id: 'pipeline_audit' as NavigationTab,
-      label: 'Perfil',
-      sublabel: 'Motor Gemma 4 RAG',
+      label: t.navProfile,
+      sublabel: t.navProfileSub,
       icon: Cpu,
       badge: 'Gemma 4'
     }
@@ -96,7 +100,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   Perú
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-medium">Asistente de Intervención Policial</p>
+              <p className="text-xs text-slate-400 font-medium">{t.appSubtitle}</p>
             </div>
           </div>
           <button
@@ -111,7 +115,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="mx-4 my-3 p-3.5 rounded-[20px] bg-slate-900/80 border border-slate-800 flex items-center gap-3">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
           <div className="text-xs">
-            <div className="font-semibold text-slate-200">Normativa Peruana 2025</div>
+            <div className="font-semibold text-slate-200">{t.regulationsBadge}</div>
             <div className="text-slate-400 text-[11px] flex items-center gap-1">
               <FileCheck2 className="w-3.5 h-3.5 text-emerald-400" /> D.S. N° 012-2025-IN
             </div>

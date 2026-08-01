@@ -8,6 +8,7 @@ from app.schemas import (
     AnswerBlocks,
     AnswerMode,
     Journey,
+    Language,
     OrientationRequest,
     OrientationResponse,
     ResponseMeta,
@@ -22,6 +23,7 @@ from app.services.models import RulesModelRuntime
 from app.services.orchestrator import DomainError, OrientationOrchestrator
 from app.services.privacy import inspect_personal_data
 from app.services.traces import TraceStore
+from app.services.traduccion import CloudTranslationService, TranslationResult
 
 
 _ALLOWED_IMAGE_MIME = {"image/jpeg", "image/png", "image/webp"}
@@ -91,12 +93,14 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
         corpus: CorpusRepository,
         traces: TraceStore,
         graph: Any,
+        translator: CloudTranslationService | None = None,
     ) -> None:
         super().__init__(
             settings=settings,
             corpus=corpus,
             model=RulesModelRuntime(),
             traces=traces,
+            translator=translator,
         )
         self._settings = settings
         self._corpus = corpus
@@ -172,9 +176,18 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
             )
 
         request_id = request_id or str(uuid4())
+        language = payload.idioma
+        input_translation = (
+            self._translator.translate(
+                payload.text,
+                target=Language.SPANISH,
+            )
+            if language != Language.SPANISH
+            else TranslationResult(payload.text, success=True)
+        )
         result = self._graph.invoke(
             {
-                "question": payload.text,
+                "question": input_translation.text,
                 "media": self._media(payload),
             }
         )
@@ -187,7 +200,7 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
         route = result.get("route", {})
         journey = _journey(str(route.get("journey", "general")))
         normalized = str(
-            answer.get("normalized_question") or payload.text
+            answer.get("normalized_question") or input_translation.text
         ).strip()
         classification = classify(normalized)
         urgency = (
@@ -200,6 +213,8 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
             list(classification.flags) if journey != Journey.GENERAL else []
         )
         flags.append(f"answer_mode:{answer_mode.value}")
+        route_mode = str(route.get("mode", "blocked"))
+        flags.append(f"route_requested:{route_mode}")
 
         docs = result.get("retrieved", []) if mode == "rag" else []
         citations = [
@@ -223,8 +238,8 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
             if doc.page_content.strip()
         ]
         facts: list[str] = []
-        if payload.text.strip():
-            facts.append(payload.text.strip())
+        if input_translation.text.strip():
+            facts.append(input_translation.text.strip())
         if payload.image is not None or payload.audio is not None:
             facts.append(f"Interpretación de Gemma: {normalized}")
         facts.extend(
@@ -237,12 +252,31 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
             answer.get("explanation")
             or "No se pudo producir una respuesta validada."
         )
+        output_results = (
+            self._translator.translate_many(
+                [*facts, explanation],
+                target=language,
+                source=Language.SPANISH,
+            )
+            if language != Language.SPANISH
+            else [
+                TranslationResult(value, success=True)
+                for value in [*facts, explanation]
+            ]
+        )
+        facts = [item.text for item in output_results[: len(facts)]]
+        if language != Language.SPANISH and payload.text.strip() and facts:
+            facts[0] = payload.text.strip()
+        explanation = output_results[-1].text
+        translation_ok = input_translation.success and all(
+            item.success for item in output_results
+        )
         validation_errors = list(result.get("validation_errors", []))
         requested_rag = route.get("mode") == "rag"
         validations = [
             ValidationResult(
                 name="ruta_agente",
-                passed=answer_mode != AnswerMode.BLOCKED,
+                passed=route_mode in {"direct", "rag"},
                 reason=str(route.get("reason") or "Ruta no disponible."),
             ),
             ValidationResult(
@@ -284,6 +318,27 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
                 ),
             ),
         ]
+        if language != Language.SPANISH:
+            validations.append(
+                ValidationResult(
+                    name="traduccion",
+                    passed=translation_ok,
+                    reason=(
+                        "La consulta se normalizó al español y la respuesta "
+                        f"se tradujo a {language.value}; "
+                        "los textos de las fuentes se conservaron en español."
+                        if translation_ok
+                        else (
+                            "Cloud Translation no estuvo disponible; se "
+                            "conservó el texto sin traducir."
+                        )
+                    ),
+                )
+            )
+        if language != Language.SPANISH:
+            flags.append(f"language:{language.value}")
+        if language != Language.SPANISH and not translation_ok:
+            flags.append("translation_fallback")
         privacy = inspect_personal_data(f"{payload.text} {normalized}")
         response = OrientationResponse(
             request_id=request_id,
@@ -305,6 +360,10 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
                 api_version=self._settings.api_version,
                 corpus_version=self._corpus.version,
                 model_provider=self.provider_name,
+                language=language,
+                translation_applied=(
+                    language != Language.SPANISH and translation_ok
+                ),
                 requires_human_legal_review=(
                     answer_mode == AnswerMode.RAG_GEMMA
                 ),
@@ -365,4 +424,5 @@ def build_adaptive_orchestrator(
         corpus=corpus,
         traces=traces,
         graph=graph,
+        translator=CloudTranslationService(settings.google_cloud_project),
     )

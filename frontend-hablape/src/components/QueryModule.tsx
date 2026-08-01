@@ -29,16 +29,23 @@ import {
   Clock,
   Globe
 } from 'lucide-react';
-import { InputMode, QueryResponse, SavedItem } from '../types';
+import { InputMode, Language, QueryResponse, SavedItem } from '../types';
+import { I18N_STRINGS } from '../data/i18n';
 import { FREQUENT_SCENARIOS } from '../data/legalCorpus';
 import heroIllustration from '../assets/images/hablape_hero_flat_illustration_1785604720032.jpg';
 
 interface QueryModuleProps {
   onSaveItem: (item: SavedItem) => void;
   onOpenAudit: () => void;
+  language?: Language;
 }
 
-export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudit }) => {
+export const QueryModule: React.FC<QueryModuleProps> = ({
+  onSaveItem,
+  onOpenAudit,
+  language = 'es'
+}) => {
+  const t = I18N_STRINGS[language];
   const [inputMode, setInputMode] = useState<InputMode>('text');
   const [inputText, setInputText] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -57,7 +64,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
 
   // API Call state
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingStep, setLoadingStep] = useState<string>('Analizando la consulta...');
+  const [loadingStep, setLoadingStep] = useState<string>(t.analyzing);
   const [queryResult, setQueryResult] = useState<QueryResponse | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [playingPhraseIndex, setPlayingPhraseIndex] = useState<number | null>(null);
@@ -163,6 +170,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
     setErrorMessage(null);
     setQueryResult(null);
     setIsSaved(false);
+    setLoadingStep(t.analyzing);
 
     // The actual route is selected by the backend agent.
     const steps = [
@@ -192,7 +200,8 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
           audioDurationSeconds: recordingSeconds || undefined,
           imageBase64: filePreview,
           fileName: selectedFile?.name,
-          consentToProcess: hasConsent
+          consentToProcess: hasConsent,
+          language
         })
       });
 
@@ -232,7 +241,12 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(phrase);
-        utterance.lang = 'es-PE';
+        utterance.lang = {
+          es: 'es-PE',
+          en: 'en-US',
+          qu: 'qu-PE',
+          ay: 'ay-PE'
+        }[language];
         utterance.rate = 0.95;
         utterance.onend = () => setPlayingPhraseIndex(null);
         utterance.onerror = () => setPlayingPhraseIndex(null);
@@ -357,7 +371,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
 
               <div>
                 <h3 className="font-extrabold text-[#1E293B] text-base group-hover:text-[#0F766E] transition-colors">
-                  Hablar por voz
+                  {t.modeVoice}
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                   Explica tu situación hablando naturalmente.
@@ -402,7 +416,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
 
               <div>
                 <h3 className="font-extrabold text-[#1E293B] text-base group-hover:text-[#0F4C81] transition-colors">
-                  Escribir consulta
+                  {t.modeText}
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                   Describe lo ocurrido paso a paso.
@@ -447,7 +461,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
 
               <div>
                 <h3 className="font-extrabold text-[#1E293B] text-base group-hover:text-blue-600 transition-colors">
-                  Tomar una fotografía
+                  {t.modeImage}
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                   Analiza un acta, documento o DNI.
@@ -478,7 +492,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
               <textarea
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Ejemplo: La policía me ha detenido en la calle y me pide el celular para revisar mis mensajes. ¿Pueden hacerlo sin orden judicial?"
+                placeholder={t.inputPlaceholder}
                 rows={4}
                 className="w-full p-4 rounded-xl border border-slate-200 text-sm bg-slate-50/50 text-slate-900 placeholder:text-slate-400 outline-none focus:border-sky-500 focus:bg-white focus:ring-3 focus:ring-sky-500/15 transition-all resize-none"
               />
@@ -621,12 +635,12 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
               {isLoading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Analizando caso...</span>
+                  <span>{t.analyzing}</span>
                 </>
               ) : (
                 <>
                   <Send className="w-4 h-4 text-sky-400" />
-                  <span>Consultar Derechos</span>
+                  <span>{t.submitQuery}</span>
                 </>
               )}
             </button>
@@ -758,7 +772,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
               <div className="p-4 bg-emerald-50/60 border border-emerald-200/80 rounded-xl space-y-2">
                 <h4 className="text-xs font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  Reglas oficiales aplicables
+                  {t.rightsTitle}
                 </h4>
                 <ul className="space-y-1.5 text-xs text-slate-700">
                   {queryResult.explanation.citizenRights.map((item, idx) => (
@@ -794,7 +808,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
             {queryResult.explanation.whatToDo.length > 0 && (
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
               <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                💡 Recomendaciones de Acción Inmediata:
+                💡 {t.whatToDoTitle}:
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-slate-700">
                 {queryResult.explanation.whatToDo.map((step, idx) => (
@@ -816,8 +830,14 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
               <div>
                 <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
                   <FileText className="w-4 h-4 text-sky-600" />
-                  Fuentes utilizadas por el backend
+                  {t.officialSources}
                 </h3>
+                {language !== 'es' && (
+                  <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold">
+                    <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                    <span>{t.officialSourceNotice}</span>
+                  </div>
+                )}
                 <p className="text-xs text-slate-500 mt-1">
                   Estas referencias provienen del corpus aprobado; no fueron elegidas por el modelo generativo.
                 </p>
@@ -856,7 +876,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                  🗣️ Frases Sugeridas con Respeto
+                  🗣️ {t.phraseSuggested}
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
                   Frases con sustento legal para comunicarte de forma asertiva durante la intervención.
@@ -882,7 +902,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
                         className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs flex items-center gap-1.5 transition-all"
                       >
                         {copiedIndex === idx ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
-                        <span>{copiedIndex === idx ? 'Copiado' : 'Copiar'}</span>
+                        <span>{copiedIndex === idx ? '✓' : t.copyPhrase}</span>
                       </button>
 
                       <button
@@ -890,7 +910,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
                         className="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs flex items-center gap-1.5 transition-all"
                       >
                         <Volume2 className={`w-3.5 h-3.5 ${playingPhraseIndex === idx ? 'animate-bounce text-yellow-300' : ''}`} />
-                        <span>{playingPhraseIndex === idx ? 'Reproduciendo...' : 'Escuchar'}</span>
+                        <span>{playingPhraseIndex === idx ? '…' : t.listenPhrase}</span>
                       </button>
                     </div>
                   </div>

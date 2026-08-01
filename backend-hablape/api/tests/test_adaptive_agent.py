@@ -23,14 +23,34 @@ from app.services.adaptive_agent import (  # noqa: E402
 )
 from app.services.corpus import CorpusRepository  # noqa: E402
 from app.services.traces import MemoryTraceStore  # noqa: E402
+from app.services.traduccion import TranslationResult  # noqa: E402
 
 
 class FakeGraph:
     def __init__(self, result: dict) -> None:
         self.result = result
+        self.payload: dict | None = None
 
-    def invoke(self, _payload: dict) -> dict:
+    def invoke(self, payload: dict) -> dict:
+        self.payload = payload
         return self.result
+
+
+class FakeTranslator:
+    def translate(self, text, *, target, source=None):
+        if target.value == "es":
+            return TranslationResult(
+                "¿La policía puede revisar mi IMEI?",
+                success=True,
+                changed=True,
+            )
+        return TranslationResult(text, success=True)
+
+    def translate_many(self, texts, *, target, source=None):
+        return [
+            TranslationResult(f"EN: {text}", success=True, changed=True)
+            for text in texts
+        ]
 
 
 class AdaptiveOrchestratorTests(unittest.TestCase):
@@ -127,6 +147,59 @@ class AdaptiveOrchestratorTests(unittest.TestCase):
                 if item.name == "citas_deterministicas"
             ).passed
         )
+
+    def test_language_is_normalized_before_rag_and_sources_stay_exact(self) -> None:
+        document = Document(
+            page_content="Texto oficial sin traducir.",
+            metadata={
+                "chunk_id": "chk-language",
+                "document_id": "doc-language",
+                "document_title_exact": "Norma oficial en español",
+                "locator": "Artículo 1",
+                "source_url": "https://www.gob.pe/norma",
+            },
+        )
+        graph = FakeGraph(
+            {
+                "route": {
+                    "mode": "rag",
+                    "journey": "identidad",
+                    "reason": "Requiere fuente oficial.",
+                },
+                "retrieved": [document],
+                "answer": {
+                    "mode": "rag",
+                    "explanation": "Explicación en español.",
+                    "normalized_question": "¿La policía puede revisar mi IMEI?",
+                },
+                "validation_errors": [],
+            }
+        )
+        orchestrator = AdaptiveOrientationOrchestrator(
+            settings=self.settings,
+            corpus=self.corpus,
+            traces=MemoryTraceStore(),
+            graph=graph,
+            translator=FakeTranslator(),
+        )
+
+        response = orchestrator.orient(
+            OrientationRequest(
+                text="Can the police inspect my IMEI?",
+                idioma="en",
+                consent_to_process=True,
+            )
+        )
+
+        self.assertEqual(
+            graph.payload["question"],
+            "¿La policía puede revisar mi IMEI?",
+        )
+        self.assertEqual(response.blocks.plain_explanation, "EN: Explicación en español.")
+        self.assertEqual(response.blocks.official_rules, ["Texto oficial sin traducir."])
+        self.assertEqual(response.sources[0].title, "Norma oficial en español")
+        self.assertEqual(response.meta.language.value, "en")
+        self.assertTrue(response.meta.translation_applied)
 
 
 if __name__ == "__main__":

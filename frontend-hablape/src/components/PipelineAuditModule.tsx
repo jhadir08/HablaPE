@@ -29,15 +29,23 @@ import {
   Building,
   Mail
 } from 'lucide-react';
+import { Language } from '../types';
+import { I18N_STRINGS } from '../data/i18n';
 import profileHeroIllustration from '../assets/images/hablape_profile_hero_1785606847407.jpg';
 
 interface ProfileModuleProps {
+  language?: Language;
+  setLanguage?: (language: Language) => void;
   onClearHistory?: () => void;
 }
 
-export const PipelineAuditModule: React.FC<ProfileModuleProps> = ({ onClearHistory }) => {
+export const PipelineAuditModule: React.FC<ProfileModuleProps> = ({
+  language = 'es',
+  setLanguage,
+  onClearHistory
+}) => {
+  const t = I18N_STRINGS[language];
   // User Preferences State
-  const [language, setLanguage] = useState<'es' | 'en'>('es');
   const [fontSize, setFontSize] = useState<'normal' | 'large'>('normal');
   const [voiceEnabled, setVoiceEnabled] = useState<boolean>(true);
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('light');
@@ -162,11 +170,11 @@ export const PipelineAuditModule: React.FC<ProfileModuleProps> = ({ onClearHisto
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#1E293B]">
-              Mi Perfil
+              {t.profileHeadline}
             </h1>
 
             <p className="text-xs sm:text-sm text-slate-600 max-w-xl leading-relaxed font-medium">
-              Personaliza tu experiencia dentro de HablaPE y administra tus preferencias de consulta, accesibilidad y privacidad.
+              {t.profileSubhead}
             </p>
           </div>
 
@@ -187,7 +195,7 @@ export const PipelineAuditModule: React.FC<ProfileModuleProps> = ({ onClearHisto
       <div className="space-y-4">
         <h2 className="text-xs font-bold uppercase tracking-wider text-[#0F4C81] px-1 flex items-center gap-2">
           <Settings className="w-4 h-4" />
-          Preferencias de Aplicación
+          {t.preferenceSection}
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -198,15 +206,15 @@ export const PipelineAuditModule: React.FC<ProfileModuleProps> = ({ onClearHisto
                 <Globe className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-extrabold text-sm text-[#1E293B]">Idioma de Interfaz</h3>
-                <p className="text-xs text-slate-500">Selecciona tu idioma preferido</p>
+                <h3 className="font-extrabold text-sm text-[#1E293B]">{t.languageTitle}</h3>
+                <p className="text-xs text-slate-500">{t.languageDescription}</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 pt-1">
+            <div className="grid grid-cols-2 gap-2 pt-1">
               <button
-                onClick={() => setLanguage('es')}
-                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center justify-center gap-1.5 ${
+                onClick={() => setLanguage?.('es')}
+                className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center justify-center gap-1.5 ${
                   language === 'es'
                     ? 'bg-[#0F4C81] text-white border-[#0F4C81] shadow-xs'
                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -217,8 +225,8 @@ export const PipelineAuditModule: React.FC<ProfileModuleProps> = ({ onClearHisto
               </button>
 
               <button
-                onClick={() => setLanguage('en')}
-                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center justify-center gap-1.5 ${
+                onClick={() => setLanguage?.('en')}
+                className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center justify-center gap-1.5 ${
                   language === 'en'
                     ? 'bg-[#0F4C81] text-white border-[#0F4C81] shadow-xs'
                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -226,6 +234,30 @@ export const PipelineAuditModule: React.FC<ProfileModuleProps> = ({ onClearHisto
               >
                 {language === 'en' && <Check className="w-3.5 h-3.5 text-white" />}
                 <span>English</span>
+              </button>
+
+              <button
+                onClick={() => setLanguage?.('qu')}
+                className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center justify-center gap-1.5 ${
+                  language === 'qu'
+                    ? 'bg-[#0F4C81] text-white border-[#0F4C81] shadow-xs'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                {language === 'qu' && <Check className="w-3.5 h-3.5 text-white" />}
+                <span>Runa Simi</span>
+              </button>
+
+              <button
+                onClick={() => setLanguage?.('ay')}
+                className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center justify-center gap-1.5 ${
+                  language === 'ay'
+                    ? 'bg-[#0F4C81] text-white border-[#0F4C81] shadow-xs'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                {language === 'ay' && <Check className="w-3.5 h-3.5 text-white" />}
+                <span>Aymar aru</span>
               </button>
             </div>
           </div>

@@ -79,7 +79,51 @@ def test_police_imei_question_forces_grounded_rag_and_backend_citations() -> Non
     assert result["answer"]["mode"] == "rag"
     assert result["answer"]["chunk_ids"] == ["chk-imei"]
     assert len(store.calls) == 1
-    assert store.calls[0]["filter"]["$and"][0]["is_official"]["$eq"] is True
+    assert store.calls[0]["filter"] == {"is_official": {"$eq": True}}
+
+
+def test_rag_post_filters_synthetic_documents_without_compound_filter() -> None:
+    synthetic = official_document("chk-synthetic")
+    synthetic.metadata["is_synthetic"] = True
+    store = FakeVectorStore([synthetic, official_document("chk-official")])
+    model = FakeModel(
+        [
+            '{"mode":"rag","journey":"identidad","reason":"regla oficial"}',
+            "Respuesta limitada al documento oficial.",
+        ]
+    )
+    graph = build_hablape_graph(vector_store=store, model=model, top_k=2)
+
+    result = graph.invoke(
+        {"question": "¿La policía puede revisar mi celular?", "media": []}
+    )
+
+    assert result["answer"]["mode"] == "rag"
+    assert result["answer"]["chunk_ids"] == ["chk-official"]
+    assert store.calls[0]["filter"] == {"is_official": {"$eq": True}}
+    assert store.calls[0]["k"] == 20
+
+
+def test_vector_search_failure_is_reported_instead_of_hidden() -> None:
+    class FailingVectorStore:
+        def similarity_search(self, _query: str, **_kwargs):
+            raise RuntimeError("permission denied")
+
+    model = FakeModel(
+        ['{"mode":"rag","journey":"identidad","reason":"regla oficial"}']
+    )
+    graph = build_hablape_graph(
+        vector_store=FailingVectorStore(),
+        model=model,
+    )
+
+    result = graph.invoke(
+        {"question": "¿La policía puede revisar mi celular?", "media": []}
+    )
+
+    assert result["answer"]["mode"] == "blocked"
+    assert result["retrieval_error"] == "RuntimeError"
+    assert any("Vector Search" in item for item in result["validation_errors"])
 
 
 def test_audio_is_understood_before_agent_routes() -> None:

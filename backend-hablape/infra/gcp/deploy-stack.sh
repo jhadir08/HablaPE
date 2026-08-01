@@ -42,6 +42,8 @@ gcloud services enable \
   cloudbuild.googleapis.com \
   iamcredentials.googleapis.com \
   aiplatform.googleapis.com \
+  vectorsearch.googleapis.com \
+  translate.googleapis.com \
   --project "$PROJECT_ID"
 
 if ! gcloud artifacts repositories describe "$REPOSITORY" \
@@ -69,6 +71,18 @@ fi
 gcloud projects add-iam-policy-binding "$PROJECT_ID" \
   --member "serviceAccount:${BACKEND_SA}" \
   --role roles/aiplatform.user \
+  --condition=None \
+  --quiet >/dev/null
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member "serviceAccount:${BACKEND_SA}" \
+  --role roles/vectorsearch.viewer \
+  --condition=None \
+  --quiet >/dev/null
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member "serviceAccount:${BACKEND_SA}" \
+  --role roles/cloudtranslate.user \
   --condition=None \
   --quiet >/dev/null
 

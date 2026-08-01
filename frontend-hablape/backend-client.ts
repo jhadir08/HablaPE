@@ -42,6 +42,8 @@ export type BackendOrientation = {
     api_version: string;
     corpus_version: string;
     model_provider: string;
+    language: "es" | "en" | "qu" | "ay";
+    translation_applied: boolean;
     generated_at: string;
     requires_human_legal_review: boolean;
   };
@@ -177,18 +179,22 @@ export function adaptOrientationForFrontend(
   const failedValidations = orientation.validations.filter((item) => !item.passed);
   const usesRag = orientation.answer_mode === "rag_gemma";
   const isBlocked = orientation.answer_mode === "blocked";
+  const attemptedRag = usesRag || orientation.flags.includes("route_requested:rag");
 
   return {
     id: orientation.request_id,
     timestamp,
     queryInput,
     scenario: {
-      category: journeyLabel(orientation.journey),
+      category:
+        attemptedRag && isBlocked
+          ? "Consulta con recuperación RAG bloqueada"
+          : journeyLabel(orientation.journey),
       riskLevel: riskLevel(orientation.urgency),
-      needsClarification: isBlocked,
+      needsClarification: isBlocked && !attemptedRag,
       missingFields: [],
       clarificationPrompt:
-        isBlocked
+        isBlocked && !attemptedRag
           ? "Reformula la consulta o añade contexto para que pueda validarse."
           : undefined,
     },
@@ -226,11 +232,18 @@ export function adaptOrientationForFrontend(
           },
         ]
       : [],
-    limitations: usesRag
+    limitations: attemptedRag
       ? (
-          "Orientación informativa basada en chunks oficiales recuperados por HablaPE. " +
-          "No constituye asesoría legal personalizada y requiere revisión humana " +
-          "antes de tomar una decisión importante."
+          usesRag
+            ? (
+                "Orientación informativa basada en chunks oficiales recuperados por HablaPE. " +
+                "No constituye asesoría legal personalizada y requiere revisión humana " +
+                "antes de tomar una decisión importante."
+              )
+            : (
+                "La consulta requería evidencia oficial, pero el backend no pudo recuperar " +
+                "chunks válidos. No se generó una orientación jurídica sin fuentes."
+              )
         )
       : (
           "Respuesta conversacional de Gemma sin búsqueda RAG ni fuentes jurídicas. " +
@@ -247,11 +260,13 @@ export function adaptOrientationForFrontend(
       {
         id: "backend-grounding",
         title: "Recuperación de fuentes aprobadas",
-        status: usesRag
+        status: attemptedRag
           ? (orientation.sources.length ? ("completed" as const) : ("warning" as const))
           : ("completed" as const),
-        details: usesRag
-          ? `${orientation.sources.length} chunks oficiales vinculados por el backend.`
+        details: attemptedRag
+          ? orientation.sources.length
+            ? `${orientation.sources.length} chunks oficiales vinculados por el backend.`
+            : "Se solicitó RAG, pero no se recuperaron chunks oficiales utilizables."
           : "El agente eligió respuesta directa; no se ejecutó Vector Search.",
         timestamp,
       },
@@ -270,6 +285,8 @@ export function adaptOrientationForFrontend(
       corpusVersion: orientation.meta.corpus_version,
       modelProvider: orientation.meta.model_provider,
       answerMode: orientation.answer_mode,
+      language: orientation.meta.language,
+      translationApplied: orientation.meta.translation_applied,
       validations: orientation.validations,
       privacy: orientation.privacy,
     },

@@ -7,13 +7,16 @@ respuesta directa y una respuesta respaldada por Vertex AI Vector Search.
 ## Flujo
 
 1. Valida consentimiento, MIME type, duración y tamaño sin persistir archivos.
-2. Gemma interpreta la entrada multimodal y normaliza la consulta.
+2. Para inglés, quechua o aimara, Cloud Translation normaliza el texto al
+   español; Gemma interpreta imagen o audio directamente y normaliza la consulta.
 3. Gemma propone `direct`, `rag` o `blocked`; una compuerta conservadora obliga
    a usar RAG cuando se solicitan reglas, facultades, procedimientos o plazos.
 4. En `direct`, Gemma conversa sin presentar afirmaciones como normas vigentes.
 5. En `rag`, Vector Search recupera solo chunks oficiales y no sintéticos.
 6. Gemma explica la evidencia; el backend, no el modelo, asigna los `chunk_id`.
-7. Registra solo metadatos de la ejecución, nunca el relato ni el archivo.
+7. Traduce la explicación y las acciones al idioma elegido, pero conserva sin
+   traducir los fragmentos, títulos y localizadores de las fuentes oficiales.
+8. Registra solo metadatos de la ejecución, nunca el relato ni el archivo.
 
 La respuesta expone `answer_mode=direct_gemma|rag_gemma|blocked`, por lo que el
 frontend puede diferenciar una conversación general de una orientación con
@@ -52,6 +55,7 @@ Ejemplo:
 ```powershell
 $body = @{
   text = "Un policía me pidió mi DNI y no explicó el motivo."
+  idioma = "es" # es, en, qu o ay
   consent_to_process = $true
   is_synthetic = $true
 } | ConvertTo-Json
@@ -68,6 +72,10 @@ Invoke-RestMethod `
 En Cloud Run se usa una cuenta de servicio administrada por el usuario y
 Application Default Credentials. No se configura
 `GOOGLE_APPLICATION_CREDENTIALS` ni se suben llaves JSON.
+
+Cloud Translation no requiere una variable adicional: usa
+`GOOGLE_CLOUD_PROJECT`, ADC y la ubicación global del servicio. La API debe
+estar habilitada y la cuenta del backend necesita `roles/cloudtranslate.user`.
 
 Variables de producción:
 

@@ -44,6 +44,13 @@ class AnswerMode(StrEnum):
     BLOCKED = "blocked"
 
 
+class Language(StrEnum):
+    SPANISH = "es"
+    ENGLISH = "en"
+    QUECHUA = "qu"
+    AYMARA = "ay"
+
+
 class MediaInput(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -77,6 +84,7 @@ class OrientationRequest(BaseModel):
     )
     consent_to_process: bool = False
     is_synthetic: bool = False
+    idioma: Language = Language.SPANISH
 
     @model_validator(mode="after")
     def require_input(self) -> "OrientationRequest":
@@ -149,6 +157,8 @@ class ResponseMeta(BaseModel):
     api_version: str
     corpus_version: str
     model_provider: str
+    language: Language = Language.SPANISH
+    translation_applied: bool = False
     generated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
@@ -198,6 +208,7 @@ class CapabilitiesResponse(BaseModel):
     api_version: str
     environment: str
     journeys: list[str]
+    supported_languages: list[Language]
     text_orientation: CapabilityStatus
     document_extraction: CapabilityStatus
     speech_to_text: CapabilityStatus

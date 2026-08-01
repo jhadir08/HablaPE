@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import unicodedata
 from typing import Annotated, Any, TypedDict
@@ -13,12 +14,16 @@ from langgraph.graph import END, START, StateGraph
 from .gemma_endpoint import GemmaVertexEndpoint, MediaPart
 
 
+logger = logging.getLogger(__name__)
+
+
 class AgentState(TypedDict, total=False):
     question: str
     normalized_question: str
     media: list[MediaPart]
     route: dict[str, str]
     retrieved: list[Document]
+    retrieval_error: str
     draft: dict[str, Any]
     answer: dict[str, Any]
     validation_errors: Annotated[list[str], list.__add__]
@@ -258,19 +263,24 @@ def build_hablape_graph(
             "normalized_question", ""
         )
         try:
-            docs = vector_store.similarity_search(
+            candidates = vector_store.similarity_search(
                 query,
-                k=top_k,
-                filter={
-                    "$and": [
-                        {"is_official": {"$eq": True}},
-                        {"is_synthetic": {"$eq": False}},
-                    ]
-                },
+                k=max(top_k * 3, 20),
+                filter={"is_official": {"$eq": True}},
             )
-        except Exception:
-            docs = []
-        return {"retrieved": docs}
+        except Exception as exc:
+            logger.exception("Vector Search no pudo recuperar evidencia oficial.")
+            return {
+                "retrieved": [],
+                "retrieval_error": type(exc).__name__,
+            }
+        docs = [
+            doc
+            for doc in candidates
+            if doc.metadata.get("is_official") is True
+            and doc.metadata.get("is_synthetic") is not True
+        ][:top_k]
+        return {"retrieved": docs, "retrieval_error": ""}
 
     def generate(state: AgentState) -> dict[str, Any]:
         if state.get("draft", {}).get("generation_error"):
@@ -286,6 +296,17 @@ def build_hablape_graph(
                         "No puedo ayudar con esa solicitud. Puedo ofrecer "
                         "información general o explicar procedimientos respaldados "
                         "por fuentes oficiales del corpus de HablaPE."
+                    ),
+                }
+            }
+        if mode == "rag" and state.get("retrieval_error"):
+            return {
+                "draft": {
+                    "mode": "blocked",
+                    "explanation": (
+                        "No pude consultar temporalmente el corpus oficial. "
+                        "La consulta requiere RAG y no debe responderse sin "
+                        "fuentes verificables."
                     ),
                 }
             }
@@ -359,7 +380,12 @@ def build_hablape_graph(
         docs = state.get("retrieved", [])
         if not explanation:
             errors.append("Gemma no devolvió una explicación utilizable.")
-        if selected_mode == "rag" and not docs:
+        if selected_mode == "rag" and state.get("retrieval_error"):
+            errors.append(
+                "Falló la consulta a Vector Search "
+                f"({state['retrieval_error']})."
+            )
+        elif selected_mode == "rag" and not docs:
             errors.append("No se recuperaron chunks oficiales.")
         if draft.get("generation_error"):
             errors.append(

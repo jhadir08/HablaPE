@@ -45,6 +45,8 @@ const orientation: BackendOrientation = {
     api_version: "1.0.0",
     corpus_version: "2026-08-01",
     model_provider: "rules",
+    language: "es",
+    translation_applied: false,
     generated_at: "2026-08-01T12:00:00Z",
     requires_human_legal_review: true,
   },
@@ -109,4 +111,31 @@ test("propagates the backend error contract without leaking response details", a
       error.code === "consent_required" &&
       error.requestId === "request-error",
   );
+});
+
+test("shows an attempted RAG retrieval as blocked instead of direct chat", () => {
+  const blocked: BackendOrientation = {
+    ...orientation,
+    answer_mode: "blocked",
+    journey: "general",
+    flags: ["answer_mode:blocked", "route_requested:rag"],
+    sources: [],
+    validations: [
+      {
+        name: "evidencia_oficial",
+        passed: false,
+        reason: "No se recuperaron chunks oficiales.",
+      },
+    ],
+  };
+
+  const adapted = adaptOrientationForFrontend(blocked, {
+    text: "Un policía me pidió mi celular y mi DNI",
+    mode: "text",
+  });
+
+  assert.equal(adapted.scenario.category, "Consulta con recuperación RAG bloqueada");
+  assert.equal(adapted.scenario.needsClarification, false);
+  assert.match(adapted.pipelineTrace[1].details, /Se solicitó RAG/);
+  assert.match(adapted.limitations, /requería evidencia oficial/);
 });

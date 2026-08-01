@@ -127,8 +127,11 @@ bash backend-hablape/infra/gcp/deploy-stack.sh
 
 El ID de endpoint no es una clave secreta. El backend construye la URL regional
 de predicción y se autentica mediante su cuenta de servicio. Esa cuenta necesita
-`roles/aiplatform.user`. En modo `agent`, Gemma decide entre respuesta directa
-y RAG; las cuestiones jurídicas recuperan evidencia de Vector Search.
+`roles/aiplatform.user`, `roles/vectorsearch.viewer` y
+`roles/cloudtranslate.user`. El script habilita Vertex AI, Vector Search y Cloud
+Translation. En modo `agent`, Gemma decide entre respuesta directa y RAG; las
+cuestiones jurídicas recuperan evidencia de Vector Search. La interfaz admite
+`es`, `en`, `qu` y `ay`; la normativa oficial se muestra sin traducir.
 
 Para una prueba local sin GCP todavía puede usarse
 `HABLAPE_MODEL_PROVIDER=rules`, pero ese modo no ejecuta el agente adaptativo.
@@ -171,6 +174,10 @@ curl -sS -X POST "$FRONTEND_URL/api/query" \
 curl -sS -X POST "$FRONTEND_URL/api/query" \
   -H 'Content-Type: application/json' \
   -d '{"text":"¿La policía puede revisar mi IMEI?","mode":"text","consentToProcess":true}'
+
+curl -sS -X POST "$FRONTEND_URL/api/query" \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"Can the police inspect my IMEI?","mode":"text","language":"en","consentToProcess":true}'
 ```
 
 Finalmente prueba una imagen JPG/PNG/WebP y un audio de hasta 30 segundos desde

@@ -10,17 +10,20 @@ from app.schemas import (
     ComplaintDraftRequest,
     ComplaintDraftResponse,
     Journey,
+    Language,
     OrientationRequest,
     OrientationResponse,
     ResponseMeta,
     TraceEvent,
     Urgency,
+    ValidationResult,
 )
 from app.services.classifier import Classification, classify
 from app.services.corpus import CorpusRepository
 from app.services.models import ModelRuntime
 from app.services.privacy import inspect_personal_data
 from app.services.traces import TraceStore
+from app.services.traduccion import CloudTranslationService, TranslationResult
 from app.services.validators import (
     validate_complaint,
     validate_orientation,
@@ -77,11 +80,15 @@ class OrientationOrchestrator:
         corpus: CorpusRepository,
         model: ModelRuntime,
         traces: TraceStore,
+        translator: CloudTranslationService | None = None,
     ) -> None:
         self._settings = settings
         self._corpus = corpus
         self._model = model
         self._traces = traces
+        self._translator = translator or CloudTranslationService(
+            settings.google_cloud_project
+        )
 
     def orient(
         self, payload: OrientationRequest, request_id: str | None = None
@@ -99,7 +106,17 @@ class OrientationOrchestrator:
             )
 
         request_id = request_id or str(uuid4())
-        classification = classify(payload.text)
+        language = payload.idioma
+        input_translation = (
+            self._translator.translate(
+                payload.text,
+                target=Language.SPANISH,
+            )
+            if language != Language.SPANISH
+            else TranslationResult(payload.text, success=True)
+        )
+        text_es = input_translation.text
+        classification = classify(text_es)
         privacy = inspect_personal_data(payload.text)
         citations = (
             self._corpus.citations_for(classification.journey)
@@ -112,7 +129,7 @@ class OrientationOrchestrator:
             else []
         )
 
-        facts = [payload.text]
+        facts = [text_es]
         facts.extend(
             f"{key}: {value}"
             for key, value in payload.confirmed_facts.items()
@@ -147,18 +164,62 @@ class OrientationOrchestrator:
             ]
             channel = None
 
+        output_results = (
+            self._translator.translate_many(
+                [*facts, explanation, *actions],
+                target=language,
+                source=Language.SPANISH,
+            )
+            if language != Language.SPANISH
+            else [
+                TranslationResult(value, success=True)
+                for value in [*facts, explanation, *actions]
+            ]
+        )
+        fact_count = len(facts)
+        facts = [item.text for item in output_results[:fact_count]]
+        if language != Language.SPANISH and payload.text.strip() and facts:
+            facts[0] = payload.text.strip()
+        explanation = output_results[fact_count].text
+        actions = [item.text for item in output_results[fact_count + 1 :]]
+        translation_ok = input_translation.success and all(
+            item.success for item in output_results
+        )
+        flags = list(classification.flags)
+        if language != Language.SPANISH:
+            flags.append(f"language:{language.value}")
+        if language != Language.SPANISH and not translation_ok:
+            flags.append("translation_fallback")
+
         validations = validate_orientation(
             journey=classification.journey,
             citations=citations,
             corpus=self._corpus,
             confirmed_facts=payload.confirmed_facts,
         )
+        if language != Language.SPANISH:
+            validations.append(
+                ValidationResult(
+                    name="traduccion",
+                    passed=translation_ok,
+                    reason=(
+                        "La consulta y la respuesta se procesaron en "
+                        f"{language.value}; "
+                        "las fuentes oficiales permanecen en español."
+                        if translation_ok
+                        else (
+                            "Cloud Translation no estuvo disponible; se "
+                            "conservó el texto sin traducir."
+                        )
+                    ),
+                )
+            )
         response = OrientationResponse(
             request_id=request_id,
             answer_mode=AnswerMode.DETERMINISTIC,
             journey=classification.journey,
             urgency=classification.urgency,
-            flags=list(classification.flags),
+            flags=flags,
             blocks=AnswerBlocks(
                 user_facts=facts,
                 official_rules=rules,
@@ -173,6 +234,10 @@ class OrientationOrchestrator:
                 api_version=self._settings.api_version,
                 corpus_version=self._corpus.version,
                 model_provider=self._model.provider_name,
+                language=language,
+                translation_applied=(
+                    language != Language.SPANISH and translation_ok
+                ),
             ),
         )
         self._traces.write(
@@ -180,7 +245,7 @@ class OrientationOrchestrator:
                 request_id=request_id,
                 journey=classification.journey.value,
                 urgency=classification.urgency.value,
-                flags=list(classification.flags),
+                flags=flags,
                 validation_passed=all(item.passed for item in validations),
                 is_synthetic=payload.is_synthetic,
                 channel=payload.channel.value,

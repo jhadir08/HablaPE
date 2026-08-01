@@ -18,6 +18,7 @@ from app.schemas import (
     ComplaintDraftResponse,
     ErrorBody,
     ErrorResponse,
+    Language,
     OrientationRequest,
     OrientationResponse,
     SourceDocument,
@@ -204,6 +205,12 @@ def capabilities(request: Request) -> CapabilitiesResponse:
             "identidad",
             "consumo",
             "consumo_sectorial_con_derivacion_segura",
+        ],
+        supported_languages=[
+            Language.SPANISH,
+            Language.ENGLISH,
+            Language.QUECHUA,
+            Language.AYMARA,
         ],
         text_orientation=CapabilityStatus(
             status="ready" if model.ready() else "not_ready",

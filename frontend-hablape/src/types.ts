@@ -1,5 +1,7 @@
 export type NavigationTab = 'query' | 'corpus' | 'scenarios' | 'history' | 'pipeline_audit';
 
+export type Language = 'es' | 'en' | 'qu' | 'ay';
+
 export type InputMode = 'text' | 'audio' | 'image';
 
 export interface IdentifiedFact {
@@ -75,6 +77,8 @@ export interface QueryResponse {
     corpusVersion: string;
     modelProvider: string;
     answerMode: 'deterministic' | 'direct_gemma' | 'rag_gemma' | 'blocked';
+    language: Language;
+    translationApplied: boolean;
     validations: Array<{ name: string; passed: boolean; reason: string }>;
     privacy: {
       possible_personal_data: string[];

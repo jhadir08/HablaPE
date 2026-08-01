@@ -48,6 +48,11 @@ temporal. En producción, texto, audio e imagen pasan por el agente Gemma del
 backend. Las fuentes solo aparecen cuando `answer_mode=rag_gemma`; una respuesta
 directa no simula referencias jurídicas.
 
+El idioma elegido se guarda en el navegador y se envía como `language` al BFF.
+Se admiten español (`es`), inglés (`en`), quechua (`qu`) y aimara (`ay`). La
+respuesta conversacional se localiza, mientras el texto normativo oficial se
+mantiene en español.
+
 ## Variables del frontend en Cloud Run
 
 | Variable | Valor esperado |

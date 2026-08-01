@@ -114,8 +114,24 @@ app.post("/api/query", async (req, res) => {
     audioBase64,
     imageBase64,
     audioDurationSeconds,
+    language: requestedLanguage,
+    idioma,
   } = req.body ?? {};
 
+  const language = typeof requestedLanguage === "string"
+    ? requestedLanguage
+    : typeof idioma === "string"
+      ? idioma
+      : "es";
+  if (!new Set(["es", "en", "qu", "ay"]).has(language)) {
+    return res.status(422).json({
+      success: false,
+      error: {
+        code: "invalid_language",
+        message: "El idioma debe ser es, en, qu o ay.",
+      },
+    });
+  }
   if (!new Set(["text", "audio", "image"]).has(mode)) {
     return res.status(422).json({
       success: false,
@@ -247,6 +263,7 @@ app.post("/api/query", async (req, res) => {
           confirmed_facts: {},
           consent_to_process: true,
           is_synthetic: false,
+          idioma: language,
         }),
       },
     );
