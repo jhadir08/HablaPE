@@ -1,0 +1,108 @@
+export type NavigationTab = 'query' | 'corpus' | 'scenarios' | 'history' | 'pipeline_audit';
+
+export type InputMode = 'text' | 'audio' | 'image';
+
+export interface IdentifiedFact {
+  category: string;
+  detail: string;
+  status: 'present' | 'missing' | 'implied';
+}
+
+export interface SuggestedPhrase {
+  phrase: string;
+  context: string;
+  purpose: string;
+}
+
+export interface LegalReference {
+  document: string;
+  article: string;
+  summary: string;
+  officialUrl?: string;
+  version: string;
+  publishedDate: string;
+  isVigente: boolean;
+}
+
+export interface DerivationChannel {
+  entity: string;
+  phone: string;
+  purpose: string;
+  website?: string;
+}
+
+export interface PipelineStep {
+  id: string;
+  title: string;
+  status: 'pending' | 'processing' | 'completed' | 'warning' | 'error';
+  details: string;
+  timestamp?: string;
+  data?: any;
+}
+
+export interface QueryResponse {
+  id: string;
+  timestamp: string;
+  queryInput: {
+    text?: string;
+    mode: InputMode;
+    fileName?: string;
+  };
+  scenario: {
+    category: string;
+    riskLevel: 'bajo' | 'medio' | 'alto';
+    needsClarification: boolean;
+    missingFields?: string[];
+    clarificationPrompt?: string;
+  };
+  facts: IdentifiedFact[];
+  explanation: {
+    overview: string;
+    citizenRights: string[];
+    citizenDuties: string[];
+    whatToDo: string[];
+    whatPoliceCanDo: string[];
+    whatPoliceCannotDo: string[];
+  };
+  suggestedPhrases: SuggestedPhrase[];
+  legalReferences: LegalReference[];
+  derivationChannels: DerivationChannel[];
+  limitations: string;
+  pipelineTrace: PipelineStep[];
+}
+
+export interface CorpusArticle {
+  id: string;
+  documentTitle: string;
+  code: string; // e.g. "D.S. N° 012-2025-IN" or "CPP Art. 205"
+  category: 'Control de Identidad' | 'Garantías Constitucionales' | 'Atribuciones Policiales' | 'Derechos Humanos';
+  articleNumber: string;
+  title: string;
+  content: string;
+  publishedDate: string;
+  effectiveDate: string;
+  version: string;
+  isVigente: boolean;
+  supersedes?: string;
+  officialUrl: string;
+  tags: string[];
+}
+
+export interface FrequentScenario {
+  id: string;
+  title: string;
+  summary: string;
+  iconName: string;
+  userPrompt: string;
+  keyTakeaways: string[];
+  commonMisconceptions: string[];
+  sampleAudioText?: string;
+}
+
+export interface SavedItem {
+  id: string;
+  type: 'query' | 'article' | 'phrase';
+  title: string;
+  timestamp: string;
+  data: any;
+}
