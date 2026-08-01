@@ -20,9 +20,13 @@ import {
   Award, 
   AlertTriangle,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Zap,
   Check,
-  Share2
+  Target,
+  Shield,
+  BookMarked
 } from 'lucide-react';
 import { FrequentScenario } from '../types';
 import heroIllustration from '../assets/images/hablape_simulator_hero_illustration_1785605743358.jpg';
@@ -307,25 +311,25 @@ const FREQUENT_MYTHS = [
   {
     id: 'm1',
     myth: 'Si no llevo mi DNI azul/amarillo físico en el bolsillo, me van a detener de inmediato.',
-    reality: 'FALSO. El D.S. N° 012-2025-IN autoriza identificarse mediante DNI digital en app de RENIEC, Licencia de Conducir o Pasaporte sin que implique infracción.',
+    reality: 'El D.S. N° 012-2025-IN autoriza identificarse mediante DNI digital en app de RENIEC, Licencia de Conducir o Pasaporte sin que implique infracción ni falta.',
     legalBasis: 'D.S. N° 012-2025-IN Art. 8'
   },
   {
     id: 'm2',
     myth: 'La Policía me puede enviar directo a un calabozo o celda común mientras revisan mis antecedentes.',
-    reality: 'FALSO. El Art. 205.5 del Código Procesal Penal prohíbe taxativamente encerrar en calabozos a ciudadanos retenidos únicamente por comprobación de DNI.',
+    reality: 'El Art. 205.5 del Código Procesal Penal prohíbe taxativamente encerrar en calabozos a ciudadanos retenidos únicamente por comprobación de DNI. Debe realizarse en la sala de atención ciudadana.',
     legalBasis: 'CPP Art. 205.5 (Ley 32130)'
   },
   {
     id: 'm3',
     myth: 'Un efectivo policial puede obligarme a desbloquear mi celular y leer mis conversaciones de WhatsApp.',
-    reality: 'FALSO. Por Art. 2 inc. 10 de la Constitución, las comunicaciones privadas son inviolables. El control de identidad jamás autoriza inspeccionar dispositivos.',
+    reality: 'Por Art. 2 inc. 10 de la Constitución, las comunicaciones privadas son inviolables. El control de identidad jamás autoriza inspeccionar dispositivos personales sin orden judicial.',
     legalBasis: 'Constitución Política Art. 2 Inc. 10'
   },
   {
     id: 'm4',
     myth: 'Pueden retenerme en la comisaría por más de 24 horas si el sistema de RENIEC se cae.',
-    reality: 'FALSO. El tiempo máximo de retención es de 4 horas improrrogables para peruanos (12 horas para extranjeros). Cumplido el plazo sin delito, debes ser liberado.',
+    reality: 'El tiempo máximo de retención es de 4 horas improrrogables para peruanos (12 horas para extranjeros). Cumplido el plazo sin delito, debes ser liberado inmediatamente.',
     legalBasis: 'CPP Art. 205 Inciso 4'
   }
 ];
@@ -338,15 +342,11 @@ export const ScenariosModule: React.FC<ScenariosModuleProps> = ({ onSelectScenar
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [completedScenarios, setCompletedScenarios] = useState<Set<string>>(new Set(['no-dni-fisico', 'identificacion-policial']));
 
-  // Categories definition
-  const categories = [
-    { id: 'all', title: 'Todos los Casos', icon: Zap, bg: 'bg-slate-100 text-slate-700' },
-    { id: 'Identificación', title: 'Identificación', icon: UserCheck, bg: 'bg-blue-50 text-[#0F4C81]' },
-    { id: 'Celulares', title: 'Celulares', icon: Smartphone, bg: 'bg-teal-50 text-[#0F766E]' },
-    { id: 'Comisaría', title: 'Comisaría', icon: Building2, bg: 'bg-indigo-50 text-indigo-800' },
-    { id: 'Procedimiento policial', title: 'Procedimiento', icon: ShieldCheck, bg: 'bg-sky-50 text-sky-800' },
-    { id: 'Extranjeros', title: 'Extranjeros', icon: Globe, bg: 'bg-emerald-50 text-emerald-800' },
-  ];
+  // Accordion state for Mitos
+  const [openMythId, setOpenMythId] = useState<string | null>('m1');
+
+  // Find pending scenario for "Continuar donde quedaste"
+  const pendingScenario = INTERACTIVE_SCENARIOS.find(sc => !completedScenarios.has(sc.id)) || INTERACTIVE_SCENARIOS[1];
 
   const filteredScenarios = selectedCategory === 'all'
     ? INTERACTIVE_SCENARIOS
@@ -367,91 +367,99 @@ export const ScenariosModule: React.FC<ScenariosModuleProps> = ({ onSelectScenar
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
-      {/* 1. HERO SECTION (Material Design 3 & Google Learning style) */}
-      <div className="bg-white border border-slate-200/90 rounded-[24px] p-6 sm:p-8 md:p-10 shadow-xs overflow-hidden relative">
+      {/* 1. HERO SECTION (Rediseñado según especificaciones) */}
+      <div className="bg-white border border-slate-200/90 rounded-[24px] p-6 sm:p-8 md:p-9 shadow-xs overflow-hidden relative">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          {/* Left Column: Title & Subtitle */}
+          {/* Left Column: Título, Subtítulo e Indicadores */}
           <div className="lg:col-span-7 space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 bg-[#0F766E]/10 text-[#0F766E] border border-[#0F766E]/20 text-xs font-bold px-3 py-1 rounded-full">
-                <Sparkles className="w-3.5 h-3.5 text-[#0F766E]" />
-                Simulador Ciudadano Interactivo
-              </span>
+            <div className="inline-flex items-center gap-1.5 bg-[#0F766E]/10 text-[#0F766E] border border-[#0F766E]/20 text-xs font-bold px-3 py-1 rounded-full">
+              <Sparkles className="w-3.5 h-3.5 text-[#0F766E]" />
+              Centro de Aprendizaje Interactivo
             </div>
 
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-[#1E293B] leading-tight">
               Practica situaciones reales
             </h1>
 
-            <p className="text-[#1E293B]/80 text-sm md:text-base leading-relaxed">
-              Aprende cómo actuar durante un control de identidad antes de que ocurra. Descubre tus derechos mediante simulaciones sencillas basadas exclusivamente en normativa oficial peruana.
+            <p className="text-[#1E293B]/80 text-xs sm:text-sm md:text-base leading-relaxed font-medium">
+              Aprende cómo actuar durante un control de identidad mediante simulaciones basadas únicamente en normativa oficial peruana.
             </p>
 
-            {/* 3 Indicators with Green Checkmarks */}
+            {/* Tres indicadores solicitados en orden exacto */}
             <div className="pt-2 flex flex-wrap gap-2.5 sm:gap-3">
-              <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-900 border border-emerald-200/90 text-xs font-semibold px-3 py-1.5 rounded-full shadow-2xs">
-                <CheckCircle2 className="w-4 h-4 text-[#22C55E]" />
-                Escenarios interactivos
-              </span>
-
-              <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-900 border border-emerald-200/90 text-xs font-semibold px-3 py-1.5 rounded-full shadow-2xs">
-                <CheckCircle2 className="w-4 h-4 text-[#22C55E]" />
+              {/* 1. 🛡 Basado en normativa oficial */}
+              <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-900 border border-emerald-200/90 text-xs font-bold px-3 py-1.5 rounded-full shadow-2xs">
+                <Shield className="w-3.5 h-3.5 text-[#22C55E]" />
                 Basado en normativa oficial
               </span>
 
-              <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-900 border border-emerald-200/90 text-xs font-semibold px-3 py-1.5 rounded-full shadow-2xs">
-                <CheckCircle2 className="w-4 h-4 text-[#22C55E]" />
-                Aprende en menos de 3 minutos
+              {/* 2. ⏱ Menos de 3 minutos */}
+              <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-900 border border-emerald-200/90 text-xs font-bold px-3 py-1.5 rounded-full shadow-2xs">
+                <Clock className="w-3.5 h-3.5 text-[#22C55E]" />
+                Menos de 3 minutos
+              </span>
+
+              {/* 3. 🎯 Aprende haciendo */}
+              <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-900 border border-emerald-200/90 text-xs font-bold px-3 py-1.5 rounded-full shadow-2xs">
+                <Target className="w-3.5 h-3.5 text-[#22C55E]" />
+                Aprende haciendo
               </span>
             </div>
           </div>
 
-          {/* Right Column: Flat Illustration */}
+          {/* Right Column: Flat Hero Illustration */}
           <div className="lg:col-span-5 flex justify-center items-center">
-            <div className="relative w-full max-w-sm rounded-[22px] overflow-hidden bg-slate-50 border border-slate-200/80 p-3 shadow-2xs">
+            <div className="relative w-full max-w-xs rounded-[20px] overflow-hidden bg-slate-50 border border-slate-200/80 p-2 shadow-2xs">
               <img 
                 src={heroIllustration} 
-                alt="Simulador Práctico de Intervenciones HablaPE"
+                alt="Practica Situaciones Reales HablaPE"
                 referrerPolicy="no-referrer"
-                className="w-full h-auto object-cover rounded-[18px] transition-transform duration-300 hover:scale-[1.02]"
+                className="w-full h-36 object-cover rounded-[14px]"
               />
             </div>
           </div>
         </div>
       </div>
 
-      {/* 2. PROGRESS & ACHIEVEMENTS BAR (Duolingo Style) */}
-      <div className="bg-white border border-slate-200/90 rounded-[22px] p-5 sm:p-6 shadow-xs space-y-4">
+      {/* 2. TU PROGRESO (Tarjeta Elegante) */}
+      <div className="bg-white border border-slate-200/90 rounded-[22px] p-6 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Award className="w-5 h-5 text-[#0F766E]" />
               <h2 className="text-sm sm:text-base font-extrabold text-[#1E293B]">
-                Tu Progreso de Aprendizaje
+                Tu progreso
               </h2>
             </div>
-            <p className="text-xs text-slate-500">
-              Has completado <span className="font-extrabold text-[#0F4C81]">{completedScenarios.size}</span> de <span className="font-bold">{INTERACTIVE_SCENARIOS.length}</span> escenarios interactivos
+            <p className="text-xs sm:text-sm text-slate-600 font-medium">
+              Progreso general: <strong className="text-[#0F4C81]">{completedScenarios.size} de {INTERACTIVE_SCENARIOS.length} escenarios completados</strong>
             </p>
           </div>
 
-          {/* Achievements Pills */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-bold text-slate-400 mr-1">Has aprendido:</span>
-            <span className="inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-teal-50 text-[#0F766E] border border-teal-200/80">
-              <Check className="w-3 h-3 text-[#22C55E]" /> DNI Digital
+          {/* Derechos aprendidos (Pills solicitados) */}
+          <div className="space-y-1">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 block">
+              Derechos aprendidos:
             </span>
-            <span className="inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-blue-50 text-[#0F4C81] border border-blue-200/80">
-              <Check className="w-3 h-3 text-[#22C55E]" /> Retención (máx 4h)
-            </span>
-            <span className="inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80">
-              <Check className="w-3 h-3 text-[#22C55E]" /> Derechos en control
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1 text-[11px] font-extrabold px-3 py-1 rounded-full bg-teal-50 text-[#0F766E] border border-teal-200/80">
+                <Check className="w-3 h-3 text-[#22C55E]" /> DNI Digital
+              </span>
+              <span className="inline-flex items-center gap-1 text-[11px] font-extrabold px-3 py-1 rounded-full bg-blue-50 text-[#0F4C81] border border-blue-200/80">
+                <Check className="w-3 h-3 text-[#22C55E]" /> Retención
+              </span>
+              <span className="inline-flex items-center gap-1 text-[11px] font-extrabold px-3 py-1 rounded-full bg-sky-50 text-sky-800 border border-sky-200/80">
+                <Check className="w-3 h-3 text-[#22C55E]" /> Celular
+              </span>
+              <span className="inline-flex items-center gap-1 text-[11px] font-extrabold px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80">
+                <Check className="w-3 h-3 text-[#22C55E]" /> Derechos
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Dynamic Progress Bar */}
-        <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-0.5 border border-slate-200/60">
+        {/* Barra de progreso limpia */}
+        <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-0.5 border border-slate-200/80">
           <div 
             className="bg-gradient-to-r from-[#0F4C81] to-[#0F766E] h-full rounded-full transition-all duration-500"
             style={{ width: `${(completedScenarios.size / INTERACTIVE_SCENARIOS.length) * 100}%` }}
@@ -459,59 +467,46 @@ export const ScenariosModule: React.FC<ScenariosModuleProps> = ({ onSelectScenar
         </div>
       </div>
 
-      {/* 3. CATEGORÍAS (Tarjetas Grandes) */}
-      <div className="space-y-3">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-[#0F4C81] px-1">
-          Categorías de Práctica
-        </h2>
+      {/* 3. CONTINUAR DONDE QUEDASTE (Tarjeta Destacada) */}
+      {pendingScenario && (
+        <div className="bg-gradient-to-r from-teal-50/90 to-blue-50/90 border border-teal-200/90 rounded-[24px] p-6 sm:p-7 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+          <div className="space-y-2 max-w-xl">
+            <div className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider px-3 py-0.5 rounded-full bg-[#0F766E] text-white shadow-2xs">
+              <Zap className="w-3 h-3" />
+              Continuar donde quedaste
+            </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-          {categories.map((cat) => {
-            const IconComp = cat.icon;
-            const isSelected = selectedCategory === cat.id;
+            <h3 className="text-base sm:text-lg font-extrabold text-[#1E293B]">
+              "{pendingScenario.title}"
+            </h3>
 
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`p-4 rounded-[20px] text-left transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-3 border ${
-                  isSelected 
-                    ? 'bg-[#0F4C81] text-white border-[#0F4C81] shadow-md ring-2 ring-[#0F4C81]/30'
-                    : 'bg-white border-slate-200/90 text-slate-800 hover:border-[#0F4C81]/40 hover:shadow-xs'
-                }`}
-              >
-                <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center ${
-                  isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-[#0F4C81]'
-                }`}>
-                  <IconComp className="w-5 h-5" />
-                </div>
+            <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">
+              {pendingScenario.shortDescription}
+            </p>
+          </div>
 
-                <div>
-                  <h3 className="text-xs font-extrabold line-clamp-1">
-                    {cat.title}
-                  </h3>
-                  <p className={`text-[10px] mt-0.5 ${isSelected ? 'text-white/80' : 'text-slate-500'}`}>
-                    {INTERACTIVE_SCENARIOS.filter(s => cat.id === 'all' || s.category === cat.id).length} casos
-                  </p>
-                </div>
-              </button>
-            );
-          })}
+          <button
+            onClick={() => handleStartPractice(pendingScenario)}
+            className="px-6 py-3 rounded-[16px] bg-[#0F4C81] hover:bg-[#0D406E] text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-2xs transition-all cursor-pointer shrink-0 hover:scale-[1.02]"
+          >
+            <Play className="w-4 h-4 fill-current" />
+            <span>Continuar</span>
+          </button>
         </div>
-      </div>
+      )}
 
-      {/* 4. ESCENARIOS INTERACTIVOS (Tarjetas Modernas de Práctica) */}
+      {/* 4. ESCENARIOS (Tarjetas con Muchísimo Aire y Padding) */}
       <div className="space-y-4">
         <div className="flex items-center justify-between px-1">
           <h2 className="text-xs font-bold uppercase tracking-wider text-[#0F4C81]">
-            Escenarios Disponibles ({filteredScenarios.length})
+            Escenarios de Práctica ({filteredScenarios.length})
           </h2>
           <span className="text-xs text-slate-500 font-medium">
-            Selecciona uno para iniciar la simulación
+            Tarjetas de aprendizaje interactivo
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {filteredScenarios.map((scenario) => {
             const CategoryIcon = scenario.categoryIcon;
             const isCompleted = completedScenarios.has(scenario.id);
@@ -519,60 +514,55 @@ export const ScenariosModule: React.FC<ScenariosModuleProps> = ({ onSelectScenar
             return (
               <div
                 key={scenario.id}
-                className="bg-white border border-slate-200/90 rounded-[22px] p-6 shadow-xs hover:shadow-md hover:border-[#0F4C81]/40 transition-all flex flex-col justify-between space-y-4"
+                className="bg-white border border-slate-200/90 rounded-[24px] p-6 sm:p-7 shadow-2xs hover:shadow-xs hover:border-[#0F4C81]/40 transition-all flex flex-col justify-between space-y-5"
               >
-                <div className="space-y-3">
-                  {/* Category Badge & Level & Completed Status */}
-                  <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                      <CategoryIcon className="w-3.5 h-3.5 text-[#0F4C81]" />
-                      {scenario.category}
-                    </span>
+                <div className="space-y-4">
+                  {/* Top Bar: Icono + Nivel + Duración */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="w-11 h-11 rounded-[16px] bg-blue-50 text-[#0F4C81] flex items-center justify-center border border-blue-100 shrink-0">
+                      <CategoryIcon className="w-5 h-5" />
+                    </div>
 
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-semibold text-slate-500 bg-slate-50 px-2.5 py-0.5 rounded-full border border-slate-200">
+                      <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-teal-50 text-[#0F766E] border border-teal-200">
+                        Nivel: {scenario.level}
+                      </span>
+
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
                         ⏱ {scenario.estimatedTime}
                       </span>
-                      {isCompleted && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80">
-                          <Check className="w-3 h-3 text-[#22C55E]" /> Completado
-                        </span>
-                      )}
                     </div>
                   </div>
 
-                  {/* Title & Short Description */}
-                  <div>
-                    <h3 className="text-lg font-extrabold text-[#1E293B]">
+                  {/* Title & Description */}
+                  <div className="space-y-1.5">
+                    <h3 className="text-base sm:text-lg font-extrabold text-[#1E293B]">
                       {scenario.title}
                     </h3>
-                    <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
                       {scenario.shortDescription}
                     </p>
                   </div>
-
-                  {/* Level Badge */}
-                  <div className="pt-1 flex items-center gap-2">
-                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                      scenario.level === 'Básico' 
-                        ? 'bg-teal-50 text-[#0F766E] border border-teal-200/80' 
-                        : scenario.level === 'Intermedio'
-                        ? 'bg-blue-50 text-[#0F4C81] border border-blue-200/80'
-                        : 'bg-indigo-50 text-indigo-800 border border-indigo-200/80'
-                    }`}>
-                      Nivel: {scenario.level}
-                    </span>
-                  </div>
                 </div>
 
-                {/* Practicar Button */}
-                <div className="pt-2">
+                {/* Botón Practicar */}
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-3">
+                  {isCompleted ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                      <Check className="w-3.5 h-3.5 text-[#22C55E]" /> Completado
+                    </span>
+                  ) : (
+                    <span className="text-xs text-slate-400 font-medium">
+                      Sin iniciar
+                    </span>
+                  )}
+
                   <button
                     onClick={() => handleStartPractice(scenario)}
-                    className="w-full py-3 px-4 rounded-[16px] bg-[#0F4C81] hover:bg-[#0D406E] text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-2xs transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
+                    className="px-5 py-2.5 rounded-[14px] bg-[#0F4C81] hover:bg-[#0D406E] text-white font-extrabold text-xs flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
                   >
-                    <Play className="w-4 h-4 fill-current" />
-                    <span>Practicar este escenario</span>
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <span>Practicar</span>
                   </button>
                 </div>
               </div>
@@ -581,76 +571,110 @@ export const ScenariosModule: React.FC<ScenariosModuleProps> = ({ onSelectScenar
         </div>
       </div>
 
-      {/* 5. SECCIÓN MITOS FRECUENTES (Carrusel / Tarjetas con Realidad y Fundamento) */}
-      <div className="space-y-4 pt-4 border-t border-slate-200/80">
+      {/* 5. MITOS (Acordeón Desplegable - Sin Bloques Gigantes) */}
+      <div className="space-y-3 pt-4 border-t border-slate-200/80">
         <div className="flex items-center justify-between px-1">
           <div>
             <h2 className="text-xs font-bold uppercase tracking-wider text-[#0F4C81]">
               Mitos Frecuentes Desmentidos
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Aprende a diferenciar las creencias populares de la realidad legal peruana
+            <p className="text-xs text-slate-500">
+              Despliega cada mito para conocer la realidad legal peruana y su fundamento
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {FREQUENT_MYTHS.map((item) => (
-            <div
-              key={item.id}
-              className="bg-white border border-slate-200/90 rounded-[22px] p-5 shadow-xs space-y-3"
-            >
-              {/* Mito Card Header */}
-              <div className="bg-amber-50/80 border border-amber-200/70 rounded-[16px] p-3.5 space-y-1">
-                <span className="text-[10px] font-extrabold text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                  ❌ Mito popular
-                </span>
-                <p className="text-xs font-bold text-amber-950 leading-relaxed">
-                  "{item.myth}"
-                </p>
-              </div>
+        {/* Mitos Accordion List */}
+        <div className="space-y-3">
+          {FREQUENT_MYTHS.map((item) => {
+            const isOpen = openMythId === item.id;
 
-              {/* Realidad Card */}
-              <div className="bg-teal-50/70 border border-teal-200/70 rounded-[16px] p-3.5 space-y-1">
-                <span className="text-[10px] font-extrabold text-[#0F766E] uppercase tracking-wider flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#22C55E]" />
-                  ✔ Realidad Legal
-                </span>
-                <p className="text-xs text-slate-800 leading-relaxed font-medium">
-                  {item.reality}
-                </p>
-              </div>
-
-              {/* Fundamento Oficial */}
-              <div className="flex items-center justify-between text-[11px] pt-1">
-                <span className="font-bold text-[#0F4C81]">
-                  📘 Fundamento: {item.legalBasis}
-                </span>
+            return (
+              <div
+                key={item.id}
+                className="bg-white border border-slate-200/90 rounded-[20px] overflow-hidden shadow-2xs transition-all"
+              >
+                {/* Accordion Header */}
                 <button
-                  onClick={() => {
-                    onSelectScenario({
-                      id: item.id,
-                      iconName: 'ShieldCheck',
-                      title: item.myth,
-                      summary: item.reality,
-                      keyTakeaways: [item.legalBasis],
-                      commonMisconceptions: [item.myth],
-                      fullLegalAnalysis: item.reality
-                    });
-                  }}
-                  className="text-xs font-bold text-[#0F766E] hover:underline flex items-center gap-1 cursor-pointer"
+                  onClick={() => setOpenMythId(isOpen ? null : item.id)}
+                  className="w-full p-4 sm:p-5 text-left bg-white hover:bg-slate-50/80 flex items-center justify-between gap-3 cursor-pointer transition-colors"
                 >
-                  <span>Consultar en HablaPE</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
+                  <div className="flex items-center gap-3">
+                    <span className="w-7 h-7 rounded-full bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0 text-xs font-bold">
+                      ❌
+                    </span>
+                    <h3 className="text-xs sm:text-sm font-extrabold text-[#1E293B]">
+                      "{item.myth}"
+                    </h3>
+                  </div>
+
+                  <div className="shrink-0 p-1 rounded-full bg-slate-100 text-slate-500">
+                    {isOpen ? <ChevronUp className="w-4 h-4 text-[#0F4C81]" /> : <ChevronDown className="w-4 h-4" />}
+                  </div>
                 </button>
+
+                {/* Accordion Expanded Content (Mito + Realidad + Norma + Botón) */}
+                {isOpen && (
+                  <div className="p-5 bg-slate-50/70 border-t border-slate-100 space-y-4 animate-in fade-in duration-200">
+                    {/* Mito detail */}
+                    <div className="bg-amber-50/80 border border-amber-200/80 rounded-[16px] p-3.5 space-y-1">
+                      <span className="text-[10px] font-extrabold text-amber-900 uppercase tracking-wider block">
+                        Mito:
+                      </span>
+                      <p className="text-xs text-amber-950 font-bold leading-relaxed">
+                        {item.myth}
+                      </p>
+                    </div>
+
+                    {/* Realidad detail */}
+                    <div className="bg-teal-50/80 border border-teal-200/80 rounded-[16px] p-3.5 space-y-1">
+                      <span className="text-[10px] font-extrabold text-[#0F766E] uppercase tracking-wider block">
+                        Realidad Legal:
+                      </span>
+                      <p className="text-xs text-slate-800 font-medium leading-relaxed">
+                        {item.reality}
+                      </p>
+                    </div>
+
+                    {/* Norma detail */}
+                    <div className="bg-white border border-slate-200/80 rounded-[16px] p-3.5 space-y-1">
+                      <span className="text-[10px] font-extrabold text-[#0F4C81] uppercase tracking-wider block">
+                        Norma oficial:
+                      </span>
+                      <p className="text-xs font-bold text-slate-800">
+                        📘 {item.legalBasis}
+                      </p>
+                    </div>
+
+                    {/* Botón Consultar en HablaPE */}
+                    <div className="pt-1 flex justify-end">
+                      <button
+                        onClick={() => {
+                          onSelectScenario({
+                            id: item.id,
+                            iconName: 'ShieldCheck',
+                            title: item.myth,
+                            summary: item.reality,
+                            keyTakeaways: [item.legalBasis],
+                            commonMisconceptions: [item.myth],
+                            fullLegalAnalysis: item.reality
+                          });
+                        }}
+                        className="px-4 py-2 rounded-xl bg-[#0F766E] hover:bg-[#0D655E] text-white font-extrabold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 text-white" />
+                        <span>Consultar en HablaPE</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* 6. MODAL / VISTA DE SIMULACIÓN INTERACTIVA (Estilo Duolingo & Google Learning) */}
+      {/* 6. MODAL DE SIMULACIÓN INTERACTIVA */}
       {activeScenario && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
           <div className="bg-white rounded-[24px] border border-slate-200 max-w-2xl w-full shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
@@ -730,7 +754,7 @@ export const ScenariosModule: React.FC<ScenariosModuleProps> = ({ onSelectScenar
                 </div>
               </div>
 
-              {/* Immediate Feedback Card (Gemma / HablaPE Explanation) */}
+              {/* Immediate Feedback Card */}
               {selectedOptionId && (
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-4 pt-2">
                   {(() => {

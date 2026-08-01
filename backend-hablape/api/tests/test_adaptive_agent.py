@@ -3,9 +3,8 @@ from __future__ import annotations
 import os
 import sys
 import unittest
+from dataclasses import dataclass
 from pathlib import Path
-
-from langchain_core.documents import Document
 
 API_ROOT = Path(__file__).resolve().parents[1]
 RAG_ROOT = API_ROOT.parent / "rag"
@@ -24,6 +23,12 @@ from app.services.adaptive_agent import (  # noqa: E402
 from app.services.corpus import CorpusRepository  # noqa: E402
 from app.services.traces import MemoryTraceStore  # noqa: E402
 from app.services.traduccion import TranslationResult  # noqa: E402
+
+
+@dataclass
+class FakeDocument:
+    page_content: str
+    metadata: dict[str, object]
 
 
 class FakeGraph:
@@ -96,7 +101,7 @@ class AdaptiveOrchestratorTests(unittest.TestCase):
         self.assertEqual(response.sources, [])
 
     def test_rag_sources_come_from_retrieved_documents(self) -> None:
-        document = Document(
+        document = FakeDocument(
             page_content="Texto oficial recuperado.",
             metadata={
                 "chunk_id": "chk-real",
@@ -149,7 +154,7 @@ class AdaptiveOrchestratorTests(unittest.TestCase):
         )
 
     def test_language_is_normalized_before_rag_and_sources_stay_exact(self) -> None:
-        document = Document(
+        document = FakeDocument(
             page_content="Texto oficial sin traducir.",
             metadata={
                 "chunk_id": "chk-language",

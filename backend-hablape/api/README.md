@@ -41,6 +41,14 @@ $env:PYTHONPATH = (Get-Location).Path
 python -m unittest discover -s tests -v
 ```
 
+Las pruebas del soporte multilingue simulan el cliente de Cloud Translation:
+no necesitan credenciales, no realizan llamadas externas y no generan costos.
+
+El endpoint de orientaciones acepta el campo opcional `idioma` con uno de estos
+códigos: `es` (español), `en` (inglés), `qu` (quechua) o `ay` (aimara). Las
+fuentes oficiales se conservan en español aunque la explicación y las acciones
+se traduzcan.
+
 ## Endpoints
 
 - `GET /health/live`
