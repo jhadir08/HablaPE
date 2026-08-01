@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from langchain_core.documents import Document
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from hablape_rag.agent import build_hablape_graph
 from hablape_rag.gemma_endpoint import GemmaVertexEndpoint, MediaPart
@@ -160,6 +160,24 @@ def test_truncated_evidence_tag_is_never_returned_as_an_explanation() -> None:
         "contexto interno" in error
         for error in result["validation_errors"]
     )
+
+
+def test_numbered_official_fragment_echo_is_never_returned() -> None:
+    store = FakeVectorStore([official_document()])
+    model = FakeModel(
+        [
+            "FRAGMENTO OFICIAL 4\nTexto interno repetido.",
+            "FUENTE 3: Texto interno repetido.",
+        ]
+    )
+    graph = build_hablape_graph(vector_store=store, model=model, top_k=2)
+
+    result = graph.invoke(
+        {"question": "¿La policía puede pedirme el DNI?", "media": []}
+    )
+
+    assert result["answer"]["mode"] == "blocked"
+    assert "FRAGMENTO OFICIAL" not in result["answer"]["explanation"]
 
 
 def test_rag_generation_retries_after_an_invalid_first_completion() -> None:
@@ -345,10 +363,21 @@ def test_gemma4_media_contract_keeps_prompt_and_binary_separate() -> None:
 
     payload = model._media_payload("Describe", media, schema="gemma4")
     prompt = model._add_media_placeholders("Describe", media)
+    formatted = model._format_prompt(
+        [
+            SystemMessage(content="Responde brevemente."),
+            HumanMessage(content="Describe la imagen."),
+        ],
+        media,
+    )
 
     assert payload["images"][0]["data"] == {"b64": "AA=="}
     assert payload["images"][0]["mime_type"] == "image/png"
     assert "<|image|>" in prompt
+    assert formatted.startswith("<|turn>system\n")
+    assert "<|turn>user\nDescribe la imagen." in formatted
+    assert "<|image|><turn|>" in formatted
+    assert formatted.endswith("<|turn>model\n")
 
 
 def test_vertex_adapter_removes_an_echoed_prompt() -> None:
@@ -366,6 +395,16 @@ def test_vertex_adapter_removes_an_echoed_prompt() -> None:
 
     assert cleaned == completion
     assert cleaned_with_template == completion
+
+    gemma4_prompt = (
+        "<|turn>system\ninstrucciones<turn|>\n"
+        "<|turn>user\npregunta<turn|>\n<|turn>model\n"
+    )
+    gemma4_cleaned = GemmaVertexEndpoint._strip_prompt_echo(
+        f"{gemma4_prompt}{completion}<turn|>",
+        gemma4_prompt,
+    )
+    assert gemma4_cleaned == f"{completion}<turn|>"
 
 
 def test_vertex_prediction_uses_a_bounded_timeout(monkeypatch) -> None:
@@ -399,3 +438,8 @@ def test_vertex_prediction_uses_a_bounded_timeout(monkeypatch) -> None:
 
     assert response.content == "Respuesta breve"
     assert captured["timeout"] == 12.5
+    instance = captured["instances"][0]
+    assert instance["prompt"] == (
+        "<|turn>user\nHola<turn|>\n<|turn>model\n"
+    )
+    assert instance["stop"] == ["<turn|>"]

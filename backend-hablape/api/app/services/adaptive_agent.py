@@ -86,7 +86,10 @@ def _citation(doc: Any, corpus_version: str) -> SourceCitation | None:
 
 _INTERNAL_CONTEXT_PATTERN = re.compile(
     r"(?:CHUNK_ID|T[ÍI]TULO|LOCALIZADOR)\s*=|"
+    r"(?:FRAGMENTO OFICIAL\s+\d+|FUENTE\s+\d+|"
+    r"EXTRACTO DE FUENTE OFICIAL)\s*:?|"
     r"(?:SYSTEM|HUMAN)\s*:|"
+    r"<\|turn>(?:system|user|model)\b|<turn\|>|"
     r"</?(?:EVIDENCIA_\d+|CONSULTA)(?:\s*>|\b)",
     flags=re.IGNORECASE,
 )
@@ -541,7 +544,8 @@ def build_adaptive_orchestrator(
         endpoint_id=settings.gemma_endpoint_id,
         request_schema=settings.gemma_request_schema,
         media_schema=settings.gemma_media_schema,
-        temperature=0.1,
+        prompt_format=settings.gemma_prompt_format,
+        temperature=0.0,
         max_output_tokens=settings.gemma_max_output_tokens,
         prediction_timeout_seconds=(
             settings.gemma_prediction_timeout_seconds

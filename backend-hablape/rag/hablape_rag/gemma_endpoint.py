@@ -27,6 +27,7 @@ class GemmaVertexEndpoint(BaseChatModel):
     endpoint_id: str
     request_schema: str = "vllm"
     media_schema: str = "auto"
+    prompt_format: str = "gemma4"
     temperature: float = 0.0
     max_output_tokens: int = 1024
     prediction_timeout_seconds: float = 30.0
@@ -63,10 +64,7 @@ class GemmaVertexEndpoint(BaseChatModel):
         media: list[MediaPart],
         stop: list[str] | None,
     ) -> ChatResult:
-        prompt = "\n\n".join(
-            f"{message.type.upper()}: {message.content}" for message in messages
-        )
-        prompt = self._add_media_placeholders(prompt, media)
+        prompt = self._format_prompt(messages, media)
         endpoint = aiplatform.Endpoint(
             endpoint_name=self.endpoint_id,
             project=self.project_id,
@@ -76,8 +74,9 @@ class GemmaVertexEndpoint(BaseChatModel):
             "temperature": self.temperature,
             "max_tokens": self.max_output_tokens,
         }
-        if stop:
-            parameters["stop"] = stop
+        effective_stop = stop or self._default_stop_tokens()
+        if effective_stop:
+            parameters["stop"] = effective_stop
         if self.request_schema == "prompt":
             instance: dict[str, Any] = {"prompt": prompt, **parameters}
         elif self.request_schema == "vllm":
@@ -120,7 +119,75 @@ class GemmaVertexEndpoint(BaseChatModel):
             self._prediction_text(response.predictions[0]),
             prompt,
         )
-        return ChatResult(generations=[ChatGeneration(message=AIMessage(content=text))])
+        return ChatResult(
+            generations=[ChatGeneration(message=AIMessage(content=text))]
+        )
+
+    def _format_prompt(
+        self, messages: list[BaseMessage], media: list[MediaPart]
+    ) -> str:
+        entries = [
+            (message.type, str(message.content)) for message in messages
+        ]
+        if media:
+            placeholders = " ".join(
+                "<|image|>" if item.kind == "image" else "<|audio|>"
+                for item in media
+            )
+            for index in range(len(entries) - 1, -1, -1):
+                role, content = entries[index]
+                if role == "human":
+                    entries[index] = (
+                        role,
+                        f"{content}\n\nENTRADA MULTIMODAL:\n{placeholders}",
+                    )
+                    break
+
+        if self.prompt_format == "gemma4":
+            role_names = {
+                "system": "system",
+                "human": "user",
+                "ai": "model",
+            }
+            turns = [
+                f"<|turn>{role_names.get(role, 'user')}\n{content}<turn|>"
+                for role, content in entries
+            ]
+            return "\n".join([*turns, "<|turn>model\n"])
+
+        if self.prompt_format == "gemma3":
+            system_text = "\n\n".join(
+                content for role, content in entries if role == "system"
+            )
+            turns: list[str] = []
+            first_user = True
+            for role, content in entries:
+                if role == "system":
+                    continue
+                gemma_role = "model" if role == "ai" else "user"
+                if gemma_role == "user" and first_user and system_text:
+                    content = f"{system_text}\n\n{content}"
+                    first_user = False
+                turns.append(
+                    f"<start_of_turn>{gemma_role}\n{content}<end_of_turn>"
+                )
+            return "\n".join([*turns, "<start_of_turn>model\n"])
+
+        if self.prompt_format == "plain":
+            plain = "\n\n".join(
+                f"{role.upper()}: {content}" for role, content in entries
+            )
+            return plain
+        raise ValueError(
+            "HABLAPE_GEMMA_PROMPT_FORMAT debe ser gemma4, gemma3 o plain."
+        )
+
+    def _default_stop_tokens(self) -> list[str]:
+        if self.prompt_format == "gemma4":
+            return ["<turn|>"]
+        if self.prompt_format == "gemma3":
+            return ["<end_of_turn>"]
+        return []
 
     @staticmethod
     def _strip_prompt_echo(text: str, prompt: str) -> str:
@@ -137,7 +204,7 @@ class GemmaVertexEndpoint(BaseChatModel):
             value = value[prompt_index + len(prompt) :].strip()
         completion_pattern = re.compile(
             r"(?:ASSISTANT|MODEL|OUTPUT|RESPUESTA|EXPLICACI[ÓO]N)\s*:\s*|"
-            r"<start_of_turn>model\s*",
+            r"<start_of_turn>model\s*|<\|turn>model\s*",
             flags=re.IGNORECASE,
         )
         boundaries = list(completion_pattern.finditer(value))

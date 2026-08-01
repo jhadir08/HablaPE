@@ -38,6 +38,7 @@ class Settings:
     gemma_endpoint_id: str | None
     gemma_request_schema: str
     gemma_media_schema: str
+    gemma_prompt_format: str
     gemma_prediction_timeout_seconds: float
     gemma_max_output_tokens: int
     vector_collection_id: str
@@ -65,6 +66,9 @@ class Settings:
         gemma_media_schema = os.getenv(
             "HABLAPE_GEMMA_MEDIA_SCHEMA", "auto"
         ).lower()
+        gemma_prompt_format = os.getenv(
+            "HABLAPE_GEMMA_PROMPT_FORMAT", "gemma4"
+        ).lower()
         gemma_prediction_timeout_seconds = float(
             os.getenv("HABLAPE_GEMMA_TIMEOUT_SECONDS", "30")
         )
@@ -90,6 +94,10 @@ class Settings:
         if gemma_media_schema not in {"auto", "gemma4", "inline_data"}:
             raise ValueError(
                 "HABLAPE_GEMMA_MEDIA_SCHEMA debe ser auto, gemma4 o inline_data."
+            )
+        if gemma_prompt_format not in {"gemma4", "gemma3", "plain"}:
+            raise ValueError(
+                "HABLAPE_GEMMA_PROMPT_FORMAT debe ser gemma4, gemma3 o plain."
             )
         if not 5 <= gemma_prediction_timeout_seconds <= 90:
             raise ValueError(
@@ -143,6 +151,7 @@ class Settings:
             ),
             gemma_request_schema=gemma_request_schema,
             gemma_media_schema=gemma_media_schema,
+            gemma_prompt_format=gemma_prompt_format,
             gemma_prediction_timeout_seconds=gemma_prediction_timeout_seconds,
             gemma_max_output_tokens=gemma_max_output_tokens,
             vector_collection_id=os.getenv(

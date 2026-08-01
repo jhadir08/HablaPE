@@ -268,7 +268,10 @@ def _sectioned_answer(value: str) -> dict[str, Any] | None:
 
 _INTERNAL_CONTEXT_PATTERN = re.compile(
     r"(?:CHUNK_ID|T[ÍI]TULO|LOCALIZADOR)\s*=|"
+    r"(?:FRAGMENTO OFICIAL\s+\d+|FUENTE\s+\d+|"
+    r"EXTRACTO DE FUENTE OFICIAL)\s*:?|"
     r"(?:SYSTEM|HUMAN)\s*:|"
+    r"<\|turn>(?:system|user|model)\b|<turn\|>|"
     r"</?(?:EVIDENCIA_\d+|CONSULTA)(?:\s*>|\b)|"
     r"(?:CONSULTA|EVIDENCIA)\s*:\s*\n",
     flags=re.IGNORECASE,
@@ -569,10 +572,10 @@ def build_hablape_graph(
         else:
             retrieved = state.get("retrieved", [])
             context_parts: list[str] = []
-            for index, doc in enumerate(retrieved[:3], start=1):
+            for doc in retrieved[:3]:
                 evidence = " ".join(str(doc.page_content).split())[:1200]
                 context_parts.append(
-                    f"FRAGMENTO OFICIAL {index}\n{evidence}"
+                    f"EXTRACTO DE FUENTE OFICIAL\n{evidence}"
                 )
             context = "\n\n".join(context_parts)
             messages = [
@@ -622,8 +625,8 @@ def build_hablape_graph(
                     for doc in state.get("retrieved", [])[:2]
                 ]
                 compact_context = "\n\n".join(
-                    f"FUENTE {index}: {text}"
-                    for index, text in enumerate(compact_parts, start=1)
+                    f"EXTRACTO DE FUENTE OFICIAL\n{text}"
+                    for text in compact_parts
                 )
                 retry_prompt = (
                     "Responde en español claro usando solo las fuentes incluidas. "
