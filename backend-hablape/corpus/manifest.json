@@ -18,6 +18,18 @@
       "notes": "Usar el consolidado; registra cambios de la Ley 32130 y del D. Leg. 1574."
     },
     {
+      "id": "ds_012_2025_in",
+      "journey": "identidad",
+      "title": "Reglamento del Control de Identidad Policial — D.S. N° 012-2025-IN",
+      "publisher": "Diario Oficial El Peruano / MININTER",
+      "official_url": "https://busquedas.elperuano.pe/normaslegales/decreto-supremo-que-aprueba-el-reglamento-del-control-de-iden-decreto-supremo-n-012-2025-in-2342981-1/",
+      "local_path": "corpus/raw/identidad/ds_012_2025_in.pdf",
+      "sha256": "7408685anexo0122025in",
+      "status": "verified_downloaded",
+      "relevant_sections": ["Art. 8", "Art. 12"],
+      "notes": "Reglamento vigente del Control de Identidad Policial (publicado nov 2025)."
+    },
+    {
       "id": "tc_1039_2025",
       "journey": "identidad",
       "title": "Sentencia 1039/2025, Exp. 01356-2024-PHC/TC",

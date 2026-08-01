@@ -34,6 +34,16 @@
       "is_synthetic": false
     },
     {
+      "id": "identidad_ds012_2025_celular",
+      "document_id": "ds_012_2025_in",
+      "journey": "identidad",
+      "locator": "D.S. N° 012-2025-IN Art. 12 / Constitución Art. 2.10",
+      "rule_type": "garantia",
+      "plain_rule": "El registro de vestimenta y equipaje durante un control de identidad no autoriza a la Policía a revisar, exigir ni leer el contenido de teléfonos celulares, chats, mensajes ni correos electrónicos, los cuales están protegidos por la garantía constitucional de la inviolabilidad de las comunicaciones (Art. 2 inc. 10 de la Constitución), salvo orden judicial motivada.",
+      "source_kind": "official_consolidated_law",
+      "is_synthetic": false
+    },
+    {
       "id": "identidad_tc_1039",
       "document_id": "tc_1039_2025",
       "journey": "identidad",

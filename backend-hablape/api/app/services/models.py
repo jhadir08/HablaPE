@@ -36,6 +36,16 @@ class RulesModelRuntime:
         flags: list[str],
     ) -> str:
         if journey == Journey.IDENTITY:
+            user_text = " ".join(user_facts).lower()
+            if any(w in user_text for w in ("celular", "mensaje", "mensajes", "whatsapp", "inviolabilidad", "comunicaciones")):
+                return (
+                    "La Policía Nacional NO puede revisar tu teléfono celular, chats ni mensajes "
+                    "durante un control de identidad policial en la calle sin una orden judicial motivada. "
+                    "Tus comunicaciones privadas están protegidas por el derecho constitucional a la inviolabilidad "
+                    "de las comunicaciones (Art. 2 inc. 10 de la Constitución y Art. 12 del D.S. N° 012-2025-IN). "
+                    "El control de identidad se limita únicamente a verificar tu identificación personal y no faculta la "
+                    "inspección ni lectura de tus dispositivos electrónicos."
+                )
             if "motivo_no_informado" in flags:
                 return (
                     "Pedir el DNI no es una facultad sin límites. Puedes "

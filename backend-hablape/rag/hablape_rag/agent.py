@@ -108,7 +108,30 @@ def _clean_model_text(value: str) -> str:
     )
     for token in ("<|turn>model", "<turn|>", "```json", "```"):
         value = value.replace(token, "")
-    return value.strip()
+
+    # Eliminar eco del prompt de sistema o consulta si el contenedor del modelo lo refleja
+    if "SYSTEM:" in value or "HUMAN:" in value or "CONSULTA:" in value:
+        for marker in ("Output:", "OUTPUT:", "RESPUESTA:", "EXPLICACIÓN:"):
+            if marker in value:
+                value = value.split(marker)[-1]
+                break
+        else:
+            value = re.sub(r"^.*?(?:EVIDENCIA:.*?\n\n|CONSULTA:.*?\n\n)", "", value, flags=re.DOTALL)
+
+    # Filtrar repeticiones en bucle producidas por el modelo
+    lines = value.strip().split("\n")
+    unique_lines: list[str] = []
+    seen = set()
+    for line in lines:
+        cleaned_line = line.strip()
+        line_norm = re.sub(r"^\d+[\.\)]\s*", "", cleaned_line)
+        if line_norm and line_norm in seen and len(line_norm) > 15:
+            continue
+        if line_norm:
+            seen.add(line_norm)
+        unique_lines.append(line)
+
+    return "\n".join(unique_lines).strip()
 
 
 def _json_object(value: str) -> dict[str, Any] | None:
