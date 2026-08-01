@@ -1,0 +1,6 @@
+{
+  "name": "HablaPE",
+  "description": "Asistente inteligente y multimodal para que una persona entienda sus derechos y procedimientos durante una intervención policial en el Perú (Control de Identidad).",
+  "requestFramePermissions": ["microphone", "camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
