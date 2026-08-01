@@ -10,53 +10,58 @@ import {
   X,
   FileCheck2
 } from 'lucide-react';
-import { NavigationTab } from '../types';
+import { NavigationTab, Language } from '../types';
+import { I18N_STRINGS } from '../data/i18n';
 
 interface SidebarProps {
   activeTab: NavigationTab;
   setActiveTab: (tab: NavigationTab) => void;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
+  language?: Language;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   setActiveTab,
   mobileOpen,
-  setMobileOpen
+  setMobileOpen,
+  language = 'es'
 }) => {
+  const t = I18N_STRINGS[language] || I18N_STRINGS.es;
+
   const navItems = [
     {
       id: 'query' as NavigationTab,
-      label: 'Inicio',
-      sublabel: 'Consulta de Intervención',
+      label: t.nav_query,
+      sublabel: t.nav_query_sub,
       icon: MessageSquareText,
       badge: 'Multimodal'
     },
     {
       id: 'corpus' as NavigationTab,
-      label: 'Normativa',
-      sublabel: 'Leyes y D.S. 012-2025-IN',
+      label: t.nav_corpus,
+      sublabel: t.nav_corpus_sub,
       icon: BookOpen,
       badge: 'Oficial'
     },
     {
       id: 'scenarios' as NavigationTab,
-      label: 'Practicar',
-      sublabel: 'Simulador de Derechos',
+      label: t.nav_scenarios,
+      sublabel: t.nav_scenarios_sub,
       icon: ShieldCheck,
       badge: 'Interactivo'
     },
     {
       id: 'history' as NavigationTab,
-      label: 'Mi Biblioteca',
-      sublabel: 'Consultas y guardados',
+      label: t.nav_history,
+      sublabel: t.nav_history_sub,
       icon: History,
     },
     {
       id: 'pipeline_audit' as NavigationTab,
-      label: 'Perfil',
-      sublabel: 'Motor Gemma 4 RAG',
+      label: t.nav_profile,
+      sublabel: t.nav_profile_sub,
       icon: Cpu,
       badge: 'Gemma 4'
     }

@@ -20,6 +20,7 @@ from app.services.corpus import CorpusRepository
 from app.services.models import ModelRuntime
 from app.services.privacy import inspect_personal_data
 from app.services.traces import TraceStore
+from app.services.traduccion import traducir, traducir_lista
 from app.services.validators import (
     validate_complaint,
     validate_orientation,
@@ -98,7 +99,12 @@ class OrientationOrchestrator:
             )
 
         request_id = request_id or str(uuid4())
-        classification = classify(payload.text)
+        idioma_target = payload.idioma.lower().strip() if payload.idioma else "es"
+        
+        # Entrada en español para el pipeline
+        texto_es = traducir(payload.text, destino="es", origen=idioma_target)
+        
+        classification = classify(texto_es)
         privacy = inspect_personal_data(payload.text)
         citations = (
             self._corpus.citations_for(classification.journey)
@@ -152,16 +158,23 @@ class OrientationOrchestrator:
             corpus=self._corpus,
             confirmed_facts=payload.confirmed_facts,
         )
+
+        # Traducción de salida si el idioma no es español
+        # La fuente oficial (rules, citations) NUNCA se traduce
+        explanation_tr = traducir(explanation, destino=idioma_target, origen="es")
+        actions_tr = traducir_lista(actions, destino=idioma_target, origen="es")
+        facts_tr = traducir_lista(facts, destino=idioma_target, origen="es")
+
         response = OrientationResponse(
             request_id=request_id,
             journey=classification.journey,
             urgency=classification.urgency,
             flags=list(classification.flags),
             blocks=AnswerBlocks(
-                user_facts=facts,
+                user_facts=facts_tr,
                 official_rules=rules,
-                plain_explanation=explanation,
-                next_actions=actions,
+                plain_explanation=explanation_tr,
+                next_actions=actions_tr,
                 channel=channel,
             ),
             sources=citations,

@@ -148,6 +148,7 @@ app.post("/api/query", async (req, res) => {
           confirmed_facts: {},
           consent_to_process: true,
           is_synthetic: false,
+          idioma: typeof req.body.language === "string" ? req.body.language : (typeof req.body.idioma === "string" ? req.body.idioma : "es"),
         }),
       },
     );

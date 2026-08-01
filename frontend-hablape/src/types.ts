@@ -1,5 +1,7 @@
 export type NavigationTab = 'query' | 'corpus' | 'scenarios' | 'history' | 'pipeline_audit';
 
+export type Language = 'es' | 'en' | 'qu' | 'ay';
+
 export type InputMode = 'text' | 'audio' | 'image';
 
 export interface IdentifiedFact {

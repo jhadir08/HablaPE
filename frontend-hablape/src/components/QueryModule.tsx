@@ -29,16 +29,23 @@ import {
   Clock,
   Globe
 } from 'lucide-react';
-import { InputMode, QueryResponse, SavedItem } from '../types';
+import { InputMode, QueryResponse, SavedItem, Language } from '../types';
+import { I18N_STRINGS } from '../data/i18n';
 import { FREQUENT_SCENARIOS } from '../data/legalCorpus';
 import heroIllustration from '../assets/images/hablape_hero_flat_illustration_1785604720032.jpg';
 
 interface QueryModuleProps {
   onSaveItem: (item: SavedItem) => void;
   onOpenAudit: () => void;
+  language?: Language;
 }
 
-export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudit }) => {
+export const QueryModule: React.FC<QueryModuleProps> = ({ 
+  onSaveItem, 
+  onOpenAudit,
+  language = 'es' 
+}) => {
+  const t = I18N_STRINGS[language] || I18N_STRINGS.es;
   const [inputMode, setInputMode] = useState<InputMode>('text');
   const [inputText, setInputText] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -174,7 +181,8 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
           audioBase64: audioBase64,
           imageBase64: filePreview,
           fileName: selectedFile?.name,
-          consentToProcess: hasConsent
+          consentToProcess: hasConsent,
+          language: language
         })
       });
 
@@ -780,8 +788,14 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
               <div>
                 <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
                   <FileText className="w-4 h-4 text-sky-600" />
-                  Fuentes utilizadas por el backend
+                  {t.official_sources_title}
                 </h3>
+                {language !== 'es' && (
+                  <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold">
+                    <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                    <span>{t.official_source_notice}</span>
+                  </div>
+                )}
                 <p className="text-xs text-slate-500 mt-1">
                   Estas referencias provienen del corpus aprobado; no fueron elegidas por el modelo generativo.
                 </p>

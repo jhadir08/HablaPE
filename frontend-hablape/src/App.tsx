@@ -5,7 +5,8 @@ import { CorpusModule } from './components/CorpusModule';
 import { ScenariosModule } from './components/ScenariosModule';
 import { HistoryModule } from './components/HistoryModule';
 import { PipelineAuditModule } from './components/PipelineAuditModule';
-import { NavigationTab, SavedItem, FrequentScenario } from './types';
+import { NavigationTab, SavedItem, FrequentScenario, Language } from './types';
+import { I18N_STRINGS } from './data/i18n';
 import { 
   Menu, 
   Scale, 
@@ -22,6 +23,15 @@ import {
 export default function App() {
   const [activeTab, setActiveTab] = useState<NavigationTab>('query');
   const [mobileOpen, setMobileOpen] = useState<boolean>(false);
+  const [language, setLanguage] = useState<Language>(() => {
+    try {
+      const stored = localStorage.getItem('hablape_language');
+      return (stored as Language) || 'es';
+    } catch {
+      return 'es';
+    }
+  });
+
   const [savedItems, setSavedItems] = useState<SavedItem[]>(() => {
     try {
       const stored = localStorage.getItem('hablape_saved_items');
@@ -33,11 +43,21 @@ export default function App() {
 
   useEffect(() => {
     try {
+      localStorage.setItem('hablape_language', language);
+    } catch (err) {
+      console.error('Error saving language preference:', err);
+    }
+  }, [language]);
+
+  useEffect(() => {
+    try {
       localStorage.setItem('hablape_saved_items', JSON.stringify(savedItems));
     } catch (err) {
       console.error('Error saving history to localStorage:', err);
     }
   }, [savedItems]);
+
+  const t = I18N_STRINGS[language] || I18N_STRINGS.es;
 
   const handleSaveItem = (newItem: SavedItem) => {
     setSavedItems((prev) => [newItem, ...prev.filter((i) => i.id !== newItem.id)]);
@@ -70,6 +90,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}
+        language={language}
       />
 
       {/* Main Container */}
@@ -108,12 +129,12 @@ export default function App() {
             {/* Header Indicators: Normativa Peruana 2025 & Escudo Verde */}
             <div className="flex items-center gap-2 sm:gap-3">
               <span className="hidden sm:inline-flex items-center text-xs font-semibold text-[#0F4C81] bg-slate-100/90 px-3 py-1.5 rounded-full border border-slate-200">
-                Normativa Peruana 2025
+                {t.normativa_badge}
               </span>
 
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0F766E] bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200/80 shadow-2xs">
                 <ShieldCheck className="w-4 h-4 text-[#22C55E]" />
-                <span className="hidden xs:inline sm:inline">Información oficial actualizada</span>
+                <span className="hidden xs:inline sm:inline">{t.official_tag}</span>
                 <span className="xs:hidden sm:hidden">Oficial</span>
               </span>
             </div>
@@ -126,6 +147,7 @@ export default function App() {
             <QueryModule
               onSaveItem={handleSaveItem}
               onOpenAudit={() => setActiveTab('pipeline_audit')}
+              language={language}
             />
           )}
 
@@ -151,14 +173,17 @@ export default function App() {
           )}
 
           {activeTab === 'pipeline_audit' && (
-            <PipelineAuditModule />
+            <PipelineAuditModule
+              language={language}
+              setLanguage={setLanguage}
+              onClearHistory={handleClearHistory}
+            />
           )}
         </main>
 
-        {/* Mobile / App Bottom Navigation Bar (Consistent across ALL screens) */}
+        {/* Mobile / App Bottom Navigation Bar */}
         <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200/90 px-3 py-2 z-40 lg:hidden shadow-lg">
           <div className="max-w-md mx-auto flex items-center justify-between relative">
-            {/* 1. Inicio */}
             <button
               onClick={() => setActiveTab('query')}
               className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer ${
@@ -166,10 +191,9 @@ export default function App() {
               }`}
             >
               <Home className={`w-5 h-5 ${activeTab === 'query' ? 'text-[#0F4C81]' : 'text-slate-400'}`} />
-              <span className="text-[10px] mt-1 font-semibold">Inicio</span>
+              <span className="text-[10px] mt-1 font-semibold">{t.nav_query}</span>
             </button>
 
-            {/* 2. Normativa */}
             <button
               onClick={() => setActiveTab('corpus')}
               className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer ${
@@ -177,10 +201,9 @@ export default function App() {
               }`}
             >
               <BookOpen className={`w-5 h-5 ${activeTab === 'corpus' ? 'text-[#0F4C81]' : 'text-slate-400'}`} />
-              <span className="text-[10px] mt-1 font-semibold">Normativa</span>
+              <span className="text-[10px] mt-1 font-semibold">{t.nav_corpus}</span>
             </button>
 
-            {/* 3. Practicar (Floating Elevated Central Primary Action Button) */}
             <div className="flex-1 flex justify-center -mt-6">
               <button
                 onClick={() => setActiveTab('scenarios')}
@@ -195,7 +218,6 @@ export default function App() {
               </button>
             </div>
 
-            {/* 4. Mi Biblioteca */}
             <button
               onClick={() => setActiveTab('history')}
               className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer ${
@@ -203,10 +225,9 @@ export default function App() {
               }`}
             >
               <History className={`w-5 h-5 ${activeTab === 'history' ? 'text-[#0F4C81]' : 'text-slate-400'}`} />
-              <span className="text-[10px] mt-1 font-semibold">Mi Biblioteca</span>
+              <span className="text-[10px] mt-1 font-semibold">{t.nav_history}</span>
             </button>
 
-            {/* 5. Perfil */}
             <button
               onClick={() => setActiveTab('pipeline_audit')}
               className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer ${
@@ -214,7 +235,7 @@ export default function App() {
               }`}
             >
               <User className={`w-5 h-5 ${activeTab === 'pipeline_audit' ? 'text-[#0F4C81]' : 'text-slate-400'}`} />
-              <span className="text-[10px] mt-1 font-semibold">Perfil</span>
+              <span className="text-[10px] mt-1 font-semibold">{t.nav_profile}</span>
             </button>
           </div>
         </nav>
