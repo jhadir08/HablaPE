@@ -206,6 +206,59 @@ class AdaptiveOrchestratorTests(unittest.TestCase):
         self.assertEqual(response.meta.language.value, "en")
         self.assertTrue(response.meta.translation_applied)
 
+    def test_internal_rag_metadata_is_blocked_before_frontend(self) -> None:
+        document = FakeDocument(
+            page_content="Texto oficial recuperado.",
+            metadata={
+                "chunk_id": "chk-protected",
+                "document_title_exact": "Documento oficial",
+                "locator": "Artículo 1",
+                "source_url": "https://www.gob.pe/norma",
+            },
+        )
+        graph = FakeGraph(
+            {
+                "route": {
+                    "mode": "rag",
+                    "journey": "identidad",
+                    "reason": "Requiere fuente oficial.",
+                },
+                "retrieved": [document],
+                "answer": {
+                    "mode": "rag",
+                    "explanation": (
+                        "CHUNK_ID=chk-protected TÍTULO=Documento oficial "
+                        "LOCALIZADOR=Artículo 1"
+                    ),
+                },
+                "validation_errors": [],
+            }
+        )
+        orchestrator = AdaptiveOrientationOrchestrator(
+            settings=self.settings,
+            corpus=self.corpus,
+            traces=MemoryTraceStore(),
+            graph=graph,
+        )
+
+        response = orchestrator.orient(
+            OrientationRequest(
+                text="¿Qué puede hacer la policía?",
+                consent_to_process=True,
+            )
+        )
+
+        self.assertEqual(response.answer_mode.value, "blocked")
+        self.assertNotIn("CHUNK_ID", response.blocks.plain_explanation)
+        self.assertEqual(response.sources, [])
+        self.assertFalse(
+            next(
+                item
+                for item in response.validations
+                if item.name == "respuesta_modelo"
+            ).passed
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

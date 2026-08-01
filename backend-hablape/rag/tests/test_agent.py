@@ -82,6 +82,52 @@ def test_police_imei_question_forces_grounded_rag_and_backend_citations() -> Non
     assert store.calls[0]["filter"] == {"is_official": {"$eq": True}}
 
 
+def test_structured_rag_answer_keeps_actions_separate_from_explanation() -> None:
+    store = FakeVectorStore([official_document()])
+    model = FakeModel(
+        [
+            '{"mode":"rag","journey":"identidad","reason":"regla oficial"}',
+            (
+                '{"explanation":"Puedes pedir que te indiquen el motivo del '
+                'control.","next_actions":["Pregunta el motivo con calma."]}'
+            ),
+        ]
+    )
+    graph = build_hablape_graph(vector_store=store, model=model, top_k=2)
+
+    result = graph.invoke(
+        {"question": "¿Qué puedo hacer durante el control?", "media": []}
+    )
+
+    assert result["answer"]["mode"] == "rag"
+    assert result["answer"]["explanation"].startswith("Puedes pedir")
+    assert result["answer"]["next_actions"] == [
+        "Pregunta el motivo con calma."
+    ]
+
+
+def test_internal_rag_context_is_never_returned_as_an_explanation() -> None:
+    store = FakeVectorStore([official_document()])
+    model = FakeModel(
+        [
+            '{"mode":"rag","journey":"identidad","reason":"regla oficial"}',
+            "CHUNK_ID=chk-imei TÍTULO=Norma LOCALIZADOR=Artículo 1 texto crudo",
+        ]
+    )
+    graph = build_hablape_graph(vector_store=store, model=model, top_k=2)
+
+    result = graph.invoke(
+        {"question": "¿La policía puede revisar mi celular?", "media": []}
+    )
+
+    assert result["answer"]["mode"] == "blocked"
+    assert "CHUNK_ID" not in result["answer"]["explanation"]
+    assert any(
+        "contexto interno" in error
+        for error in result["validation_errors"]
+    )
+
+
 def test_rag_post_filters_synthetic_documents_without_compound_filter() -> None:
     synthetic = official_document("chk-synthetic")
     synthetic.metadata["is_synthetic"] = True
@@ -176,3 +222,20 @@ def test_gemma4_media_contract_keeps_prompt_and_binary_separate() -> None:
     assert payload["images"][0]["data"] == {"b64": "AA=="}
     assert payload["images"][0]["mime_type"] == "image/png"
     assert "<|image|>" in prompt
+
+
+def test_vertex_adapter_removes_an_echoed_prompt() -> None:
+    prompt = "SYSTEM: instrucciones\n\nHUMAN: evidencia interna"
+    completion = '{"explanation":"Respuesta clara","next_actions":[]}'
+
+    cleaned = GemmaVertexEndpoint._strip_prompt_echo(
+        f"{prompt}\n\nASSISTANT: {completion}",
+        prompt,
+    )
+    cleaned_with_template = GemmaVertexEndpoint._strip_prompt_echo(
+        f"plantilla transformada por el servidor\nASSISTANT: {completion}",
+        prompt,
+    )
+
+    assert cleaned == completion
+    assert cleaned_with_template == completion

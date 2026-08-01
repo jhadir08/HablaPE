@@ -818,7 +818,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({
               <h3 className="text-lg font-extrabold text-slate-900 mb-1">
                 Explicación en Lenguaje Claro
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-sm md:text-[15px] text-slate-700 leading-7 whitespace-pre-line">
                 {queryResult.explanation.overview}
               </p>
             </div>
@@ -826,7 +826,12 @@ export const QueryModule: React.FC<QueryModuleProps> = ({
             {/* Rights & Duties Grid */}
             {(queryResult.explanation.citizenRights.length > 0 ||
               queryResult.explanation.whatPoliceCannotDo.length > 0) && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className={`grid grid-cols-1 gap-4 ${
+              queryResult.explanation.citizenRights.length > 0 &&
+              queryResult.explanation.whatPoliceCannotDo.length > 0
+                ? 'md:grid-cols-2'
+                : ''
+            }`}>
               {/* Citizen Rights */}
               {queryResult.explanation.citizenRights.length > 0 && (
               <div className="p-4 bg-emerald-50/60 border border-emerald-200/80 rounded-xl space-y-2">

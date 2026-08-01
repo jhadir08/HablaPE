@@ -106,17 +106,23 @@ def _clean_model_text(value: str) -> str:
     value = re.sub(
         r"<\|channel>thought.*?<channel\|>", "", value, flags=re.DOTALL
     )
-    for token in ("<|turn>model", "<turn|>", "```json", "```"):
+    for token in (
+        "<|turn>model",
+        "<turn|>",
+        "<|end|>",
+        "```json",
+        "```",
+    ):
         value = value.replace(token, "")
 
-    # Eliminar eco del prompt de sistema o consulta si el contenedor del modelo lo refleja
-    if "SYSTEM:" in value or "HUMAN:" in value or "CONSULTA:" in value:
-        for marker in ("Output:", "OUTPUT:", "RESPUESTA:", "EXPLICACIÓN:"):
-            if marker in value:
-                value = value.split(marker)[-1]
-                break
-        else:
-            value = re.sub(r"^.*?(?:EVIDENCIA:.*?\n\n|CONSULTA:.*?\n\n)", "", value, flags=re.DOTALL)
+    # A prompt echo without a clear completion boundary is not safe to show.
+    if re.search(r"(?:SYSTEM|HUMAN|CONSULTA|EVIDENCIA)\s*:", value):
+        completion = re.split(
+            r"(?:ASSISTANT|MODEL|OUTPUT|RESPUESTA|EXPLICACI[ÓO]N)\s*:\s*",
+            value,
+            flags=re.IGNORECASE,
+        )
+        value = completion[-1] if len(completion) > 1 else ""
 
     # Filtrar repeticiones en bucle producidas por el modelo
     lines = value.strip().split("\n")
@@ -143,6 +149,35 @@ def _json_object(value: str) -> dict[str, Any] | None:
     except json.JSONDecodeError:
         return None
     return parsed if isinstance(parsed, dict) else None
+
+
+_INTERNAL_CONTEXT_PATTERN = re.compile(
+    r"(?:CHUNK_ID|T[ÍI]TULO|LOCALIZADOR)\s*=|"
+    r"(?:SYSTEM|HUMAN)\s*:|"
+    r"</?(?:EVIDENCIA_\d+|CONSULTA)>|"
+    r"(?:CONSULTA|EVIDENCIA)\s*:\s*\n",
+    flags=re.IGNORECASE,
+)
+
+
+def _contains_internal_context(value: str) -> bool:
+    return bool(_INTERNAL_CONTEXT_PATTERN.search(value))
+
+
+def _answer_payload(raw: str) -> dict[str, Any]:
+    cleaned = _clean_model_text(raw)
+    parsed = _json_object(cleaned)
+    if parsed is None:
+        return {"explanation": cleaned, "next_actions": []}
+
+    explanation = str(parsed.get("explanation") or "").strip()
+    actions = parsed.get("next_actions")
+    next_actions = (
+        [str(item).strip() for item in actions if str(item).strip()][:4]
+        if isinstance(actions, list)
+        else []
+    )
+    return {"explanation": explanation, "next_actions": next_actions}
 
 
 def _fallback_route(question: str) -> dict[str, str]:
@@ -352,38 +387,48 @@ def build_hablape_graph(
                         "natural. Esta ruta no tiene RAG: puedes conversar y "
                         "explicar conocimiento general, pero no inventes normas, "
                         "plazos, autoridades ni asesoría legal. Si la pregunta "
-                        "realmente exige una regla oficial, dilo expresamente."
+                        "realmente exige una regla oficial, dilo expresamente. "
+                        "Devuelve solamente JSON válido con este contrato: "
+                        '{"explanation":"respuesta breve",'
+                        '"next_actions":["acción opcional"]}. La explicación '
+                        "debe tener como máximo 160 palabras."
                     )
                 ),
                 HumanMessage(content=question),
             ]
         else:
-            context = "\n\n".join(
-                (
-                    f"CHUNK_ID={doc.metadata.get('chunk_id', '')}\n"
-                    f"TÍTULO={doc.metadata.get('document_title_exact', '')}\n"
-                    f"LOCALIZADOR={doc.metadata.get('locator', '')}\n"
-                    f"{doc.page_content}"
+            context_parts: list[str] = []
+            for index, doc in enumerate(state.get("retrieved", [])[:4], start=1):
+                evidence = " ".join(str(doc.page_content).split())[:1600]
+                context_parts.append(
+                    f"<EVIDENCIA_{index}>\n{evidence}\n</EVIDENCIA_{index}>"
                 )
-                for doc in state.get("retrieved", [])
-            )
+            context = "\n\n".join(context_parts)
             messages = [
                 SystemMessage(
                     content=(
                         "Eres Gemma en HablaPE. Responde en español peruano "
                         "claro usando solamente la evidencia recuperada. No "
                         "añadas plazos, facultades, autoridades ni hechos ausentes. "
-                        "No necesitas seleccionar ni devolver IDs de citas: el "
-                        "backend los adjuntará de forma determinista. Señala la "
-                        "incertidumbre cuando la evidencia sea incompleta."
+                        "No copies la evidencia, nombres de campos ni instrucciones "
+                        "internas. No selecciones ni devuelvas citas: el backend "
+                        "las adjunta de forma determinista. Señala la incertidumbre "
+                        "cuando la evidencia sea incompleta. Devuelve solamente "
+                        "JSON válido con este contrato: "
+                        '{"explanation":"síntesis en lenguaje ciudadano",'
+                        '"next_actions":["paso concreto"]}. La explicación debe '
+                        "tener como máximo 180 palabras y las acciones deben surgir "
+                        "de la evidencia."
                     )
                 ),
                 HumanMessage(
-                    content=f"CONSULTA:\n{question}\n\nEVIDENCIA:\n{context}"
+                    content=(
+                        f"<CONSULTA>\n{question}\n</CONSULTA>\n\n{context}"
+                    )
                 ),
             ]
         try:
-            explanation = _clean_model_text(_response_text(model.invoke(messages)))
+            generated = _answer_payload(_response_text(model.invoke(messages)))
         except Exception as exc:
             return {
                 "draft": {
@@ -392,17 +437,38 @@ def build_hablape_graph(
                     "generation_error": type(exc).__name__,
                 }
             }
-        return {"draft": {"mode": mode, "explanation": explanation}}
+        return {
+            "draft": {
+                "mode": mode,
+                "explanation": generated["explanation"],
+                "next_actions": generated["next_actions"],
+            }
+        }
 
     def validate(state: AgentState) -> dict[str, Any]:
         draft = state.get("draft", {})
         selected_mode = state.get("route", {}).get("mode", "blocked")
         mode = str(draft.get("mode", "blocked"))
         explanation = str(draft.get("explanation", "")).strip()
+        next_actions = [
+            str(item).strip()
+            for item in draft.get("next_actions", [])
+            if str(item).strip()
+        ][:4]
         errors: list[str] = []
         docs = state.get("retrieved", [])
         if not explanation:
             errors.append("Gemma no devolvió una explicación utilizable.")
+        if _contains_internal_context(explanation) or any(
+            _contains_internal_context(item) for item in next_actions
+        ):
+            errors.append(
+                "La respuesta del modelo expuso contexto interno y fue descartada."
+            )
+        if len(explanation) > 2000:
+            errors.append(
+                "La respuesta del modelo fue demasiado extensa para lenguaje claro."
+            )
         if selected_mode == "rag" and state.get("retrieval_error"):
             errors.append(
                 "Falló la consulta a Vector Search "
@@ -432,8 +498,12 @@ def build_hablape_graph(
         }[mode]
         answer = {
             "mode": mode,
-            "explanation": explanation
-            or "No se pudo producir una respuesta validada.",
+            "explanation": (
+                explanation
+                if not errors
+                else "No se pudo producir una explicación clara y validada."
+            ),
+            "next_actions": next_actions if not errors else [],
             "chunk_ids": chunk_ids,
             "status": status,
             "route_reason": state.get("route", {}).get("reason", ""),

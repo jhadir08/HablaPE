@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 from uuid import uuid4
 
@@ -81,6 +82,46 @@ def _citation(doc: Any, corpus_version: str) -> SourceCitation | None:
             metadata.get("review_status") or "requires_human_legal_review"
         ),
     )
+
+
+_INTERNAL_CONTEXT_PATTERN = re.compile(
+    r"(?:CHUNK_ID|T[ÍI]TULO|LOCALIZADOR)\s*=|"
+    r"(?:SYSTEM|HUMAN)\s*:|"
+    r"</?(?:EVIDENCIA_\d+|CONSULTA)>",
+    flags=re.IGNORECASE,
+)
+
+
+def _contains_internal_context(value: str) -> bool:
+    return bool(_INTERNAL_CONTEXT_PATTERN.search(value))
+
+
+def _official_excerpt(doc: Any) -> str:
+    """Build a short display excerpt without exposing ingestion metadata."""
+
+    text = " ".join(str(doc.page_content).split())
+    title = str(
+        doc.metadata.get("document_title_exact")
+        or doc.metadata.get("title")
+        or ""
+    ).strip()
+    if title and text.lower().startswith(title.lower()):
+        text = text[len(title) :].lstrip(" .:-")
+    text = re.sub(
+        r"(?:CHUNK_ID|T[ÍI]TULO|LOCALIZADOR)\s*=\S+",
+        " ",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(r"(?:\b\d{1,4}\b\s+){3,}", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    if len(text) <= 420:
+        return text
+    cutoff = max(
+        text.rfind(". ", 220, 420),
+        text.rfind("; ", 220, 420),
+    )
+    return text[: cutoff + 1 if cutoff >= 220 else 417].rstrip() + "…"
 
 
 class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
@@ -193,6 +234,26 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
         )
         answer = result.get("answer", {})
         mode = str(answer.get("mode", "blocked"))
+        explanation = str(
+            answer.get("explanation")
+            or "No se pudo producir una respuesta validada."
+        ).strip()
+        next_actions = [
+            str(item).strip()
+            for item in answer.get("next_actions", [])
+            if str(item).strip()
+        ][:4]
+        validation_errors = list(result.get("validation_errors", []))
+        leaked_context = _contains_internal_context(explanation) or any(
+            _contains_internal_context(item) for item in next_actions
+        )
+        if leaked_context:
+            mode = "blocked"
+            explanation = "No se pudo producir una explicación clara y validada."
+            next_actions = []
+            validation_errors.append(
+                "La salida contenía metadatos internos del RAG y fue descartada."
+            )
         answer_mode = {
             "direct": AnswerMode.DIRECT_GEMMA,
             "rag": AnswerMode.RAG_GEMMA,
@@ -232,11 +293,15 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
                 unique_citations.append(item)
         citations = unique_citations
 
-        rules = [
-            " ".join(doc.page_content.split())[:700]
-            for doc in docs[:4]
-            if doc.page_content.strip()
-        ]
+        rules = list(
+            dict.fromkeys(
+                excerpt
+                for excerpt in (
+                    _official_excerpt(doc) for doc in docs[:3]
+                )
+                if excerpt
+            )
+        )
         facts: list[str] = []
         if input_translation.text.strip():
             facts.append(input_translation.text.strip())
@@ -248,30 +313,30 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
             if value is not None
         )
 
-        explanation = str(
-            answer.get("explanation")
-            or "No se pudo producir una respuesta validada."
-        )
+        output_values = [*facts, explanation, *next_actions]
         output_results = (
             self._translator.translate_many(
-                [*facts, explanation],
+                output_values,
                 target=language,
                 source=Language.SPANISH,
             )
             if language != Language.SPANISH
             else [
                 TranslationResult(value, success=True)
-                for value in [*facts, explanation]
+                for value in output_values
             ]
         )
-        facts = [item.text for item in output_results[: len(facts)]]
+        fact_count = len(facts)
+        facts = [item.text for item in output_results[:fact_count]]
         if language != Language.SPANISH and payload.text.strip() and facts:
             facts[0] = payload.text.strip()
-        explanation = output_results[-1].text
+        explanation = output_results[fact_count].text
+        next_actions = [
+            item.text for item in output_results[fact_count + 1 :]
+        ]
         translation_ok = input_translation.success and all(
             item.success for item in output_results
         )
-        validation_errors = list(result.get("validation_errors", []))
         requested_rag = route.get("mode") == "rag"
         validations = [
             ValidationResult(
@@ -350,7 +415,7 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
                 user_facts=facts,
                 official_rules=rules,
                 plain_explanation=explanation,
-                next_actions=[],
+                next_actions=next_actions,
                 channel=None,
             ),
             sources=citations,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -111,8 +112,34 @@ class GemmaVertexEndpoint(BaseChatModel):
         if response is None:
             assert last_error is not None
             raise last_error
-        text = self._prediction_text(response.predictions[0])
+        text = self._strip_prompt_echo(
+            self._prediction_text(response.predictions[0]),
+            prompt,
+        )
         return ChatResult(generations=[ChatGeneration(message=AIMessage(content=text))])
+
+    @staticmethod
+    def _strip_prompt_echo(text: str, prompt: str) -> str:
+        """Remove the input when a custom serving container returns it too.
+
+        Some text-generation containers return ``prompt + completion`` rather
+        than the completion alone. Keeping that prefix would expose the RAG
+        evidence and internal instructions in the citizen-facing explanation.
+        """
+
+        value = text.strip()
+        prompt_index = value.rfind(prompt)
+        if prompt_index >= 0:
+            value = value[prompt_index + len(prompt) :].strip()
+        completion_pattern = re.compile(
+            r"(?:ASSISTANT|MODEL|OUTPUT|RESPUESTA|EXPLICACI[ÓO]N)\s*:\s*|"
+            r"<start_of_turn>model\s*",
+            flags=re.IGNORECASE,
+        )
+        boundaries = list(completion_pattern.finditer(value))
+        if boundaries:
+            value = value[boundaries[-1].end() :]
+        return value.strip()
 
     @staticmethod
     def _add_media_placeholders(prompt: str, media: list[MediaPart]) -> str:
