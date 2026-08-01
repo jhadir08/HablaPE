@@ -15,7 +15,30 @@ export const LEGAL_CORPUS: CorpusArticle[] = [
     isVigente: true,
     supersedes: 'D.S. N° 026-2017-IN (Derogado)',
     officialUrl: 'https://busquedas.elperuano.pe/normaslegales/ds-012-2025-in',
-    tags: ['identificación', 'vía pública', 'derechos fundamentales', 'DNI']
+    spijUrl: 'https://spij.minjus.gob.pe/spij-ext-web/detallenorma/N3210',
+    elPeruanoUrl: 'https://busquedas.elperuano.pe/normaslegales/ds-012-2025-in',
+    tags: ['identificación', 'vía pública', 'derechos fundamentales', 'DNI'],
+    citizenSummary: 'La policía puede pedirte identificación en la vía pública por prevención, pero siempre debe tratarte con respeto y sin abuso de fuerza.',
+    whenUsed: [
+      'Cuando un policía te pide tu DNI mientras caminas o vas en transporte público.',
+      'En operativos de control preventivo en vías públicas.',
+      'Para verificar que el procedimiento se realice sin discriminación ni arbitrariedad.'
+    ],
+    relatedCases: [
+      'Identificación casual en vía pública',
+      'Operativos nocturnos en calles principales',
+      'Verificación preventiva de documentos'
+    ],
+    faqs: [
+      {
+        question: '¿La policía necesita una orden judicial para pedirme DNI en la calle?',
+        answer: 'No. El control de identidad en la calle es una facultad preventiva de la policía sin necesidad de orden judicial previo.'
+      },
+      {
+        question: '¿Pueden tratarme con violencia durante la intervención?',
+        answer: 'Absolutamente no. La norma exige respeto irrestricto a los Derechos Humanos y trato proporcionado.'
+      }
+    ]
   },
   {
     id: 'cpp-205',
@@ -30,13 +53,36 @@ export const LEGAL_CORPUS: CorpusArticle[] = [
     version: 'Texto Unificado 2025',
     isVigente: true,
     officialUrl: 'https://spij.minjus.gob.pe/spij-ext-web/',
-    tags: ['DNI', 'retencion', '4 horas', '12 horas extranjeros', 'comisaria', 'libro de registro']
+    spijUrl: 'https://spij.minjus.gob.pe/spij-ext-web/detallenorma/N957',
+    elPeruanoUrl: 'https://busquedas.elperuano.pe/normaslegales/ley-32130-cpp',
+    tags: ['DNI', 'retencion', '4 horas', '12 horas extranjeros', 'comisaria', 'libro de registro'],
+    citizenSummary: 'Si muestras tu DNI y no hay sospechas de delito, el control termina. Si no lo llevas, la retención en comisaría es máximo 4 horas para peruanos (12 para extranjeros).',
+    whenUsed: [
+      'Cuando te piden DNI en la calle o te conducen a una comisaría por no portar documento físico.',
+      'Para calcular el tiempo máximo permitido de retención (4h nacionales / 12h extranjeros).',
+      'Para exigir la anotación formal en el Libro de Registro de la Comisaría.'
+    ],
+    relatedCases: [
+      'Olvido de DNI físico al salir de casa',
+      'Traslado a comisaría para verificación biométrica',
+      'Verificación migratoria de ciudadanos extranjeros'
+    ],
+    faqs: [
+      {
+        question: '¿Si me llevan a la comisaría por no tener DNI, estoy detenido?',
+        answer: 'No. Es una retención exclusiva para verificación de identidad, no un arresto ni detención por delito.'
+      },
+      {
+        question: '¿Qué pasa si pasan las 4 horas de retención?',
+        answer: 'Al cumplirse las 4 horas deben darte la salida inmediatamente si se comprobó tu identidad y no hay requisitoria.'
+      }
+    ]
   },
   {
     id: 'ds-012-2025-art8',
     documentTitle: 'Reglamento de Control de Identidad Policial',
     code: 'D.S. N° 012-2025-IN',
-    category: 'Atribuciones Policiales',
+    category: 'Celulares',
     articleNumber: 'Art. 8',
     title: 'Uso de Medios Digitales y DNI Virtual',
     content: 'El ciudadano puede acreditar su identidad mediante el DNI físico, DNI electrónico, o la exhibición del DNI digital a través de aplicaciones oficiales de RENIEC u otros documentos oficiales con foto y validez legal (licencia de conducir, pasaporte, carnet de extranjería, CPP). El efectivo policial debe verificar el documento en el lugar sin retener indebidamente el dispositivo móvil.',
@@ -45,7 +91,24 @@ export const LEGAL_CORPUS: CorpusArticle[] = [
     version: '2025 (Vigente)',
     isVigente: true,
     officialUrl: 'https://busquedas.elperuano.pe/normaslegales/ds-012-2025-in',
-    tags: ['DNI digital', 'celular', 'RENIEC', 'pasaporte', 'carnet extranjería']
+    spijUrl: 'https://spij.minjus.gob.pe/spij-ext-web/detallenorma/N3210',
+    elPeruanoUrl: 'https://busquedas.elperuano.pe/normaslegales/ds-012-2025-in',
+    tags: ['DNI digital', 'celular', 'RENIEC', 'pasaporte', 'carnet extranjería'],
+    citizenSummary: 'Puedes identificarte mostrando tu DNI digital en tu celular o licencia de conducir. El policía no debe quitarte el celular.',
+    whenUsed: [
+      'Cuando muestras la app del RENIEC o foto de tu documento oficial en tu teléfono.',
+      'Para evitar traslados a comisaría si tienes tu DNI virtual disponible.'
+    ],
+    relatedCases: [
+      'Identificación mediante DNI electrónico en smartphone',
+      'Presentación de carnet de extranjería o pasaporte'
+    ],
+    faqs: [
+      {
+        question: '¿Tiene la misma validez el DNI digital que el azul o electrónico?',
+        answer: 'Sí, las apps oficiales de RENIEC o documentos oficiales con fotografía tienen plena validez legal.'
+      }
+    ]
   },
   {
     id: 'cpp-205-5',
@@ -60,7 +123,24 @@ export const LEGAL_CORPUS: CorpusArticle[] = [
     version: 'Texto Unificado 2025',
     isVigente: true,
     officialUrl: 'https://spij.minjus.gob.pe/spij-ext-web/',
-    tags: ['derechos', 'llamada telefónica', 'no calabozo', 'familiares']
+    spijUrl: 'https://spij.minjus.gob.pe/spij-ext-web/detallenorma/N957',
+    elPeruanoUrl: 'https://busquedas.elperuano.pe/normaslegales/ley-32130-cpp',
+    tags: ['derechos', 'llamada telefónica', 'no calabozo', 'familiares'],
+    citizenSummary: 'Prohibido meterte al calabozo por falta de DNI. Tienes derecho a hacer una llamada telefónica para avisar a un familiar o que te lleven el documento.',
+    whenUsed: [
+      'Durante la retención en comisaría para exigir trato digno fuera de calabozos.',
+      'Para solicitar acceso inmediato a tu teléfono y llamar a un familiar.'
+    ],
+    relatedCases: [
+      'Llamada de auxilio a un familiar en caso de retención',
+      'Exigencia de no ingresar a celdas de detenidos'
+    ],
+    faqs: [
+      {
+        question: '¿Pueden quitarme el celular si estoy retenido en comisaría por DNI?',
+        answer: 'No. Tienes derecho a comunicarte para avisar tu ubicación y pedir que te traigan tu documento.'
+      }
+    ]
   },
   {
     id: 'manual-ddhh-pnp',
@@ -75,13 +155,30 @@ export const LEGAL_CORPUS: CorpusArticle[] = [
     version: 'Vigente',
     isVigente: true,
     officialUrl: 'https://www.gob.pe/mininter',
-    tags: ['identificación policía', 'placa policial', 'grado y nombre', 'respeto']
+    spijUrl: 'https://spij.minjus.gob.pe/spij-ext-web/detallenorma/RM1452-2018',
+    elPeruanoUrl: 'https://busquedas.elperuano.pe/normaslegales/rm-1452-2018-in',
+    tags: ['identificación policía', 'placa policial', 'grado y nombre', 'respeto'],
+    citizenSummary: 'El policía tiene la obligación de decirte su nombre, rango y comisaría, y explicar por qué te está deteniendo antes de pedirte tu DNI.',
+    whenUsed: [
+      'Al iniciar cualquier intervención policial en la calle o vehículo.',
+      'Para solicitar respetuosamente el nombre y número de placa del efectivo.'
+    ],
+    relatedCases: [
+      'Intervención policial por agentes vestidos de civil',
+      'Requerimiento de identificación por parte del efectivo policial'
+    ],
+    faqs: [
+      {
+        question: '¿Puedo pedirle su nombre y placa al policía?',
+        answer: 'Sí. Es una obligación del policía identificarse antes de requerir tus documentos.'
+      }
+    ]
   },
   {
     id: 'const-art2',
     documentTitle: 'Constitución Política del Perú',
     code: 'Const. Art. 2 Inc. 24',
-    category: 'Garantías Constitucionales',
+    category: 'Constitución',
     articleNumber: 'Art. 2 Inc. 24 f)',
     title: 'Libertad y Seguridad Personales',
     content: 'Nadie puede ser detenido sino por mandato escrito y motivado del juez o por las autoridades policiales en caso de flagrante delito. El control de identidad policial es una restricción temporal de la libertad ambulatoria, NO una detención por delito, por lo cual exige causa justificada y trato digno.',
@@ -90,13 +187,30 @@ export const LEGAL_CORPUS: CorpusArticle[] = [
     version: 'Constitución 1993',
     isVigente: true,
     officialUrl: 'https://www.gob.pe/constitucion',
-    tags: ['constitución', 'libertad', 'flagrancia', 'detención']
+    spijUrl: 'https://spij.minjus.gob.pe/spij-ext-web/detallenorma/N1993',
+    elPeruanoUrl: 'https://www.gob.pe/constitucion',
+    tags: ['constitución', 'libertad', 'flagrancia', 'detención'],
+    citizenSummary: 'Garantía máxima constitucional: solo pueden detenerte si cometiste un delito evidente o hay orden judicial escrita. El control de DNI no es una detención por delito.',
+    whenUsed: [
+      'Para fundamentar la diferencia entre una simple verificación de DNI y una detención arbitraria.',
+      'Al apelar abuso de autoridad o detención sin flagrancia.'
+    ],
+    relatedCases: [
+      'Defensa frente a detenciones arbitrarias sin flagrancia',
+      'Protección constitucional de la libertad individual'
+    ],
+    faqs: [
+      {
+        question: '¿Qué es delito flagrante?',
+        answer: 'Cuando la persona es descubierta en el instante de cometer un delito o inmediatamente después con pruebas u objetos del hecho.'
+      }
+    ]
   },
   {
     id: 'ds-012-2025-registro-equipos',
     documentTitle: 'Reglamento de Control de Identidad Policial',
     code: 'D.S. N° 012-2025-IN',
-    category: 'Atribuciones Policiales',
+    category: 'Procedimientos',
     articleNumber: 'Art. 12',
     title: 'Límites en el Registro de Celulares y Pertenencias',
     content: 'El control de identidad no autoriza la revisión del contenido privado de teléfonos celulares, chats, correos o galerías de fotos. El secreto de las telecomunicaciones es inviolable conforme al Art. 2 inc. 10 de la Constitución. La Policía únicamente puede realizar un registro superficial de prendas o equipaje de mano cuando existan indicios objetivos de peligro o posesión de armas/objetos ilícitos.',
@@ -105,7 +219,24 @@ export const LEGAL_CORPUS: CorpusArticle[] = [
     version: '2025 (Vigente)',
     isVigente: true,
     officialUrl: 'https://busquedas.elperuano.pe/normaslegales/ds-012-2025-in',
-    tags: ['celular', 'privacidad', 'secreto de comunicaciones', 'revisión']
+    spijUrl: 'https://spij.minjus.gob.pe/spij-ext-web/detallenorma/N3210',
+    elPeruanoUrl: 'https://busquedas.elperuano.pe/normaslegales/ds-012-2025-in',
+    tags: ['celular', 'privacidad', 'secreto de comunicaciones', 'revisión'],
+    citizenSummary: 'Tu celular y tus chats son privados por Constitución. Ningún policía puede obligarte a desbloquear tu teléfono ni leer tus mensajes en un control de identidad.',
+    whenUsed: [
+      'Si un policía te exige desbloquear tu smartphone para revisar WhatsApp, fotos o banca móvil.',
+      'Para proteger tus datos personales y privacidad durante la intervención.'
+    ],
+    relatedCases: [
+      'Solicitud arbitraria de desbloqueo de smartphone',
+      'Inspección de equipaje o mochilas sin sospecha fundada'
+    ],
+    faqs: [
+      {
+        question: '¿Pueden obligarme a poner mi huella o clave en el celular?',
+        answer: 'No. El secreto de las telecomunicaciones es inviolable salvo orden motivada de un juez.'
+      }
+    ]
   }
 ];
 
@@ -180,5 +311,23 @@ export const FREQUENT_SCENARIOS: FrequentScenario[] = [
       'Mito: El CPP o Carnet de Extranjería no sirve para identificarse ante la Policía (Falso, es oficial).',
       'Mito: Una retención por verificación migratoria es expulsión directa (Falso, son trámites distintos).'
     ]
+  },
+  {
+    id: 'motivo-intervencion',
+    title: 'Motivo de la intervención policial',
+    summary: 'Saber por qué razón te detienen y solicitar la identificación del efectivo policial.',
+    iconName: 'ShieldAlert',
+    userPrompt: 'Un policía me indicó que me detenga en la vía pública. ¿Tengo derecho a saber por qué me intervienen y pedir su nombre o número de placa?',
+    keyTakeaways: [
+      'El oficial tiene el deber de identificarse primero (nombre, rango y comisaría).',
+      'Deben explicarte claramente el motivo del control de identidad o prevención de delito.',
+      'Tienes derecho a trato respetuoso en todo momento sin abuso de autoridad.',
+      'Puedes anotar o grabar la intervención desde el espacio público.'
+    ],
+    commonMisconceptions: [
+      'Mito: La policía puede detenerte en la calle sin dar ninguna explicación (Falso, deben fundamentar el motivo).',
+      'Mito: Grabar a un policía en la vía pública es delito (Falso, es un derecho ciudadano en espacio público).'
+    ],
+    sampleAudioText: 'Un policía me detuvo en la calle y se niega a decirme su nombre ni por qué me está pidiendo mis documentos.'
   }
 ];

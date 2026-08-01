@@ -19,9 +19,19 @@ import {
   HelpCircle,
   Sparkles,
   ChevronRight,
-  FileText
+  FileText,
+  ArrowRight,
+  Shield,
+  Camera,
+  MessageSquareText,
+  CreditCard,
+  Smartphone,
+  Clock,
+  Globe
 } from 'lucide-react';
 import { InputMode, QueryResponse, SavedItem } from '../types';
+import { FREQUENT_SCENARIOS } from '../data/legalCorpus';
+import heroIllustration from '../assets/images/hablape_hero_flat_illustration_1785604720032.jpg';
 
 interface QueryModuleProps {
   onSaveItem: (item: SavedItem) => void;
@@ -34,6 +44,9 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   
+  // Ref for smooth scrolling to query form
+  const inputAreaRef = useRef<HTMLDivElement>(null);
+
   // Audio recording state
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -220,132 +233,246 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-700/80 rounded-2xl p-6 shadow-md text-white">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="bg-red-500/20 text-red-300 border border-red-500/30 text-xs font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider">
-                Control de Identidad Policial
+    <div className="max-w-5xl mx-auto space-y-8">
+      {/* Hero Section: Minimalist, 35% Visual Area, Flat Illustration, Petroleum Blue & Teal Accents */}
+      <div id="hero-banner" className="bg-white border border-slate-200/90 rounded-[24px] p-6 sm:p-8 md:p-10 shadow-xs overflow-hidden relative">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          {/* Left Column: Title & Subtitle */}
+          <div className="lg:col-span-7 space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 bg-[#0F4C81]/10 text-[#0F4C81] border border-[#0F4C81]/20 text-xs font-bold px-3 py-1 rounded-full">
+                <Shield className="w-3.5 h-3.5 text-[#0F4C81]" />
+                Asistente Ciudadano PE
               </span>
-              <span className="bg-blue-500/20 text-blue-300 border border-blue-500/30 text-xs font-semibold px-2.5 py-0.5 rounded-md flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-blue-400" /> Gemma 4 RAG
+              <span className="inline-flex items-center gap-1.5 bg-[#0F766E]/10 text-[#0F766E] border border-[#0F766E]/20 text-xs font-semibold px-3 py-1 rounded-full">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#22C55E]" />
+                Normativa Oficial Peruana
               </span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">
-              Navegador de Derechos y Procedimientos
+
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-[#1E293B] leading-tight">
+              ¿Cómo podemos ayudarte hoy?
             </h1>
-            <p className="text-slate-300 text-sm mt-1 max-w-2xl">
-              Describe lo sucedido por texto, voz o subiendo la foto de un acta o documento. Analizaremos tu caso bajo el <strong className="text-white font-semibold">D.S. N° 012-2025-IN</strong> y el <strong className="text-white font-semibold">Código Procesal Penal (Art. 205)</strong>.
+
+            <p className="text-[#1E293B]/80 text-sm md:text-base leading-relaxed">
+              Describe lo sucedido y recibirás orientación basada únicamente en normativa oficial peruana.
             </p>
+
+            <div className="pt-2 flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => {
+                  inputAreaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }}
+                className="px-6 py-3.5 rounded-[20px] bg-[#0F766E] hover:bg-[#0D655E] text-white font-extrabold text-sm flex items-center justify-center gap-2.5 shadow-md shadow-teal-900/10 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+              >
+                <span>Comenzar consulta</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={onOpenAudit}
+                className="px-5 py-3.5 rounded-[20px] bg-slate-100 hover:bg-slate-200 text-[#1E293B] font-semibold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <HelpCircle className="w-4 h-4 text-slate-500" />
+                <span>¿Cómo funciona?</span>
+              </button>
+            </div>
           </div>
-          
-          <button
-            onClick={onOpenAudit}
-            className="self-start md:self-center px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs text-slate-200 font-medium flex items-center gap-2 transition-all hover:border-slate-500 shadow-xs shrink-0"
-          >
-            <span>Ver Auditoría de Pipeline</span>
-            <ChevronRight className="w-4 h-4 text-slate-400" />
-          </button>
+
+          {/* Right Column: Hero Flat Illustration (~35% of space) */}
+          <div className="lg:col-span-5 flex justify-center items-center">
+            <div className="relative w-full max-w-sm rounded-[22px] overflow-hidden bg-slate-50 border border-slate-200/80 p-3 shadow-2xs">
+              <img 
+                src={heroIllustration} 
+                alt="HablaPE Asistente Ciudadano Perú"
+                referrerPolicy="no-referrer"
+                className="w-full h-auto object-cover rounded-[18px] transition-transform duration-300 hover:scale-[1.02]"
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Input Area Card */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
-        {/* Mode Selector Tabs */}
-        <div className="flex border-b border-slate-200 bg-slate-50/80 p-1.5 gap-1">
-          <button
-            onClick={() => setInputMode('text')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all ${
-              inputMode === 'text'
-                ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60'
-            }`}
-          >
-            <FileText className="w-4 h-4 text-red-600" />
-            <span>Texto</span>
-          </button>
-          
-          <button
-            onClick={() => setInputMode('audio')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all ${
+      {/* Métodos de Consulta: 3 Horizontal Cards (Hablar, Escribir, Fotografía) */}
+      <div className="space-y-3">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-[#0F4C81] px-1">
+          Métodos de Consulta
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Card 1: Hablar por voz */}
+          <div
+            onClick={() => {
+              setInputMode('audio');
+              inputAreaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }}
+            className={`group relative text-left p-6 rounded-[22px] border transition-all duration-300 cursor-pointer flex flex-col justify-between space-y-4 ${
               inputMode === 'audio'
-                ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60'
+                ? 'bg-white border-[#0F766E] shadow-md ring-2 ring-[#0F766E]/20'
+                : 'bg-white border-slate-200/90 hover:border-[#0F766E]/50 hover:shadow-md'
             }`}
           >
-            <Mic className="w-4 h-4 text-emerald-600" />
-            <span>Voz / Micrófono</span>
-          </button>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="w-12 h-12 rounded-[18px] bg-[#0F766E]/10 text-[#0F766E] border border-[#0F766E]/20 flex items-center justify-center group-hover:bg-[#0F766E] group-hover:text-white transition-all duration-300 shadow-2xs">
+                  <Mic className="w-6 h-6" />
+                </div>
+                {inputMode === 'audio' && (
+                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#0F766E] text-white uppercase tracking-wider shadow-2xs">
+                    Activo
+                  </span>
+                )}
+              </div>
 
-          <button
-            onClick={() => setInputMode('image')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all ${
-              inputMode === 'image'
-                ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60'
-            }`}
-          >
-            <ImageIcon className="w-4 h-4 text-blue-600" />
-            <span>Foto de Documento / Acta</span>
-          </button>
-        </div>
+              <div>
+                <h3 className="font-extrabold text-[#1E293B] text-base group-hover:text-[#0F766E] transition-colors">
+                  Hablar por voz
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Explica tu situación hablando naturalmente.
+                </p>
+              </div>
+            </div>
 
-        {/* Form Body */}
-        <div className="p-5 space-y-4">
-          {/* Quick Prompts Chips */}
-          <div className="space-y-1.5">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              Casos frecuentes de consulta rápida:
-            </span>
-            <div className="flex flex-wrap gap-2 pt-1">
-              {quickPrompts.map((prompt, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => {
-                    setInputText(prompt);
-                    setInputMode('text');
-                  }}
-                  className="text-xs bg-slate-100 hover:bg-red-50 hover:text-red-700 hover:border-red-200 border border-slate-200/90 text-slate-700 px-3 py-1.5 rounded-lg transition-all text-left"
-                >
-                  {prompt}
-                </button>
-              ))}
+            <div className="pt-2">
+              <button
+                type="button"
+                className="w-full py-2.5 px-4 rounded-[14px] bg-[#0F766E] hover:bg-[#0D655E] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-2xs transition-all"
+              >
+                <Mic className="w-4 h-4" />
+                <span>Grabar audio</span>
+              </button>
             </div>
           </div>
 
+          {/* Card 2: Escribir consulta */}
+          <div
+            onClick={() => {
+              setInputMode('text');
+              inputAreaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }}
+            className={`group relative text-left p-6 rounded-[22px] border transition-all duration-300 cursor-pointer flex flex-col justify-between space-y-4 ${
+              inputMode === 'text'
+                ? 'bg-white border-[#0F4C81] shadow-md ring-2 ring-[#0F4C81]/20'
+                : 'bg-white border-slate-200/90 hover:border-[#0F4C81]/50 hover:shadow-md'
+            }`}
+          >
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="w-12 h-12 rounded-[18px] bg-[#0F4C81]/10 text-[#0F4C81] border border-[#0F4C81]/20 flex items-center justify-center group-hover:bg-[#0F4C81] group-hover:text-white transition-all duration-300 shadow-2xs">
+                  <MessageSquareText className="w-6 h-6" />
+                </div>
+                {inputMode === 'text' && (
+                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#0F4C81] text-white uppercase tracking-wider shadow-2xs">
+                    Activo
+                  </span>
+                )}
+              </div>
+
+              <div>
+                <h3 className="font-extrabold text-[#1E293B] text-base group-hover:text-[#0F4C81] transition-colors">
+                  Escribir consulta
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Describe lo ocurrido paso a paso.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                className="w-full py-2.5 px-4 rounded-[14px] bg-[#0F4C81] hover:bg-[#0D406E] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-2xs transition-all"
+              >
+                <MessageSquareText className="w-4 h-4" />
+                <span>Escribir mensaje</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Card 3: Tomar una fotografía */}
+          <div
+            onClick={() => {
+              setInputMode('image');
+              inputAreaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }}
+            className={`group relative text-left p-6 rounded-[22px] border transition-all duration-300 cursor-pointer flex flex-col justify-between space-y-4 ${
+              inputMode === 'image'
+                ? 'bg-white border-blue-500 shadow-md ring-2 ring-blue-500/20'
+                : 'bg-white border-slate-200/90 hover:border-blue-400/50 hover:shadow-md'
+            }`}
+          >
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="w-12 h-12 rounded-[18px] bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all duration-300 shadow-2xs">
+                  <Camera className="w-6 h-6" />
+                </div>
+                {inputMode === 'image' && (
+                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-blue-600 text-white uppercase tracking-wider shadow-2xs">
+                    Activo
+                  </span>
+                )}
+              </div>
+
+              <div>
+                <h3 className="font-extrabold text-[#1E293B] text-base group-hover:text-blue-600 transition-colors">
+                  Tomar una fotografía
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Analiza un acta, documento o DNI.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                className="w-full py-2.5 px-4 rounded-[14px] bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-2xs transition-all"
+              >
+                <Camera className="w-4 h-4" />
+                <span>Subir imagen</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Input Form Container */}
+      <div ref={inputAreaRef} className="bg-white border border-slate-200/90 rounded-[20px] shadow-xs overflow-hidden">
+        {/* Form Body */}
+        <div className="p-6 space-y-4">
           {/* Text Mode */}
           {inputMode === 'text' && (
             <div className="space-y-3">
               <textarea
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Ejemplo: Me detuvieron en la avenida Abancay. No tengo mi DNI físico y el policía insiste en llevarme a la comisaría sin permitirme dar mi número de DNI..."
-                className="w-full h-32 p-4 rounded-xl border border-slate-300 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 text-sm text-slate-800 placeholder-slate-400 resize-none outline-none transition-all"
+                placeholder="Ejemplo: La policía me ha detenido en la calle y me pide el celular para revisar mis mensajes. ¿Pueden hacerlo sin orden judicial?"
+                rows={4}
+                className="w-full p-4 rounded-xl border border-slate-200 text-sm bg-slate-50/50 text-slate-900 placeholder:text-slate-400 outline-none focus:border-sky-500 focus:bg-white focus:ring-3 focus:ring-sky-500/15 transition-all resize-none"
               />
             </div>
           )}
 
           {/* Audio Mode */}
           {inputMode === 'audio' && (
-            <div className="p-6 bg-slate-50 border border-slate-200 rounded-xl text-center space-y-4">
-              <p className="text-xs text-slate-600">
-                Graba tu relato de voz explicando la situación que viviste o estás presenciando.
+            <div className="p-6 bg-slate-50 border border-slate-200/80 rounded-[18px] text-center space-y-4">
+              <p className="text-xs text-slate-600 font-medium max-w-lg mx-auto">
+                Graba tu relato de voz explicando la situación que viviste o estás presenciando durante el control policial.
               </p>
 
               <div className="flex flex-col items-center justify-center gap-3">
                 {!isRecording ? (
                   <button
                     onClick={startRecording}
-                    className="w-16 h-16 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center shadow-lg shadow-red-600/30 transition-all hover:scale-105"
+                    className="w-16 h-16 rounded-full bg-slate-900 hover:bg-slate-800 text-sky-400 border border-slate-700 flex items-center justify-center shadow-lg transition-all hover:scale-105 cursor-pointer"
                   >
                     <Mic className="w-8 h-8" />
                   </button>
                 ) : (
                   <button
                     onClick={stopRecording}
-                    className="w-16 h-16 rounded-full bg-slate-900 text-white flex items-center justify-center shadow-lg animate-pulse"
+                    className="w-16 h-16 rounded-full bg-slate-950 text-white flex items-center justify-center shadow-lg animate-pulse cursor-pointer border-2 border-sky-400"
                   >
                     <Square className="w-6 h-6 fill-white" />
                   </button>
@@ -353,7 +480,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
 
                 <div className="text-xs font-semibold text-slate-700">
                   {isRecording ? (
-                    <span className="text-red-600 font-mono">
+                    <span className="text-sky-600 font-mono">
                       ● Grabando audio: {recordingSeconds}s
                     </span>
                   ) : audioBase64 ? (
@@ -361,18 +488,17 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
                       ✓ Grabación lista ({Math.round((audioBlob?.size || 0) / 1024)} KB)
                     </span>
                   ) : (
-                    'Haz clic en el micrófono para comenzar a grabar'
+                    'Toca el micrófono para comenzar a grabar'
                   )}
                 </div>
               </div>
 
-              {/* Optional text with audio */}
               <input
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Añadir comentario o aclaración adicional (Opcional)..."
-                className="w-full p-3 rounded-lg border border-slate-200 text-xs bg-white text-slate-800 outline-none focus:border-red-500"
+                placeholder="Añadir aclaración escrita adicional (Opcional)..."
+                className="w-full p-3 rounded-xl border border-slate-200 text-xs bg-white text-slate-800 outline-none focus:border-sky-500"
               />
             </div>
           )}
@@ -380,7 +506,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
           {/* Image Mode */}
           {inputMode === 'image' && (
             <div className="space-y-3">
-              <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-slate-400 transition-all bg-slate-50/50">
+              <div className="border-2 border-dashed border-slate-300 rounded-[18px] p-6 text-center hover:border-sky-400 transition-all bg-slate-50/50">
                 <input
                   type="file"
                   accept="image/*"
@@ -389,12 +515,12 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
                   id="file-upload-input"
                 />
                 <label htmlFor="file-upload-input" className="cursor-pointer space-y-2 block">
-                  <Upload className="w-8 h-8 text-slate-400 mx-auto" />
-                  <p className="text-xs font-semibold text-slate-700">
+                  <Upload className="w-8 h-8 text-sky-600 mx-auto" />
+                  <p className="text-xs font-semibold text-slate-800">
                     Sube una foto de tu DNI, Acta de Intervención o Documento Oficial
                   </p>
                   <p className="text-[11px] text-slate-500">
-                    Soporta formatos JPG, PNG (Capturas o foto de cámara)
+                    Soporta imágenes JPG, PNG (foto directa de cámara o documento)
                   </p>
                 </label>
               </div>
@@ -404,14 +530,14 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
                   <img src={filePreview} alt="Preview" className="w-16 h-16 object-cover rounded-lg border border-slate-300" />
                   <div className="flex-1 text-xs">
                     <p className="font-semibold text-slate-800 truncate">{selectedFile?.name || 'Imagen seleccionada'}</p>
-                    <p className="text-slate-500">Imagen lista para análisis multimodal con Gemma 4</p>
+                    <p className="text-slate-500">Documento listo para análisis oficial</p>
                   </div>
                   <button
                     onClick={() => {
                       setSelectedFile(null);
                       setFilePreview(null);
                     }}
-                    className="text-xs text-red-600 hover:underline font-medium"
+                    className="text-xs text-slate-600 hover:text-slate-900 font-medium hover:underline"
                   >
                     Quitar
                   </button>
@@ -422,40 +548,40 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="¿Qué consulta tienes sobre este documento o acta? (Opcional)..."
-                className="w-full p-3 rounded-lg border border-slate-200 text-xs bg-white text-slate-800 outline-none focus:border-red-500"
+                placeholder="¿Qué duda específica tienes sobre esta acta o documento? (Opcional)..."
+                className="w-full p-3 rounded-xl border border-slate-200 text-xs bg-white text-slate-800 outline-none focus:border-sky-500"
               />
             </div>
           )}
 
-          {/* Error Message if any */}
+          {/* Error Message */}
           {errorMessage && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0 text-red-600" />
+            <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-xl flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           {/* Action Footer */}
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>Normativa oficial del Perú en tiempo real</span>
+              <span>Análisis sustentado en normativa del Estado Peruano</span>
             </div>
 
             <button
               onClick={() => handleSubmit()}
               disabled={isLoading || (!inputText.trim() && !audioBase64 && !filePreview)}
-              className="px-6 py-3 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-semibold text-xs flex items-center gap-2 shadow-md shadow-red-600/20 transition-all hover:scale-[1.02] cursor-pointer"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs md:text-sm flex items-center justify-center gap-2 shadow-md transition-all hover:scale-[1.01] cursor-pointer"
             >
               {isLoading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Procesando...</span>
+                  <span>Analizando caso...</span>
                 </>
               ) : (
                 <>
-                  <Send className="w-4 h-4" />
+                  <Send className="w-4 h-4 text-sky-400" />
                   <span>Consultar Derechos</span>
                 </>
               )}
@@ -464,19 +590,18 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
         </div>
       </div>
 
-      {/* Loading Pipeline State */}
+      {/* Loading State */}
       {isLoading && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-white text-center space-y-4 shadow-lg animate-pulse">
-          <div className="w-12 h-12 bg-red-600/20 text-red-400 border border-red-500/30 rounded-2xl flex items-center justify-center mx-auto">
+        <div className="bg-slate-950 border border-slate-800 rounded-[20px] p-6 text-white text-center space-y-4 shadow-lg animate-pulse">
+          <div className="w-12 h-12 bg-sky-500/15 text-sky-400 border border-sky-500/30 rounded-2xl flex items-center justify-center mx-auto">
             <Sparkles className="w-6 h-6 animate-spin" />
           </div>
           <div>
-            <h3 className="font-bold text-lg text-white">Procesando con Gemma 4 RAG Engine</h3>
+            <h3 className="font-bold text-lg text-white">Verificando Normativa Oficial</h3>
             <p className="text-xs text-slate-300 mt-1">{loadingStep}</p>
           </div>
-
           <div className="max-w-md mx-auto bg-slate-800 h-1.5 rounded-full overflow-hidden">
-            <div className="bg-red-500 h-full w-3/4 animate-pulse rounded-full" />
+            <div className="bg-sky-400 h-full w-3/4 animate-pulse rounded-full" />
           </div>
         </div>
       )}
@@ -493,7 +618,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
                 </span>
                 <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
                   queryResult.scenario.riskLevel === 'alto' 
-                    ? 'bg-red-100 text-red-800 border border-red-200' 
+                    ? 'bg-amber-100 text-amber-800 border border-amber-200' 
                     : queryResult.scenario.riskLevel === 'medio'
                     ? 'bg-amber-100 text-amber-800 border border-amber-200'
                     : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
@@ -546,7 +671,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
                       fact.status === 'present'
                         ? 'bg-emerald-100 text-emerald-800'
                         : fact.status === 'missing'
-                        ? 'bg-red-100 text-red-800'
+                        ? 'bg-amber-100 text-amber-800'
                         : 'bg-blue-100 text-blue-800'
                     }`}>
                       {fact.status === 'present' ? 'Confirmado' : fact.status === 'missing' ? 'Faltante' : 'Deducido'}
@@ -588,15 +713,15 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
               </div>
 
               {/* What Police CANNOT Do (Crucial protection) */}
-              <div className="p-4 bg-red-50/60 border border-red-200/80 rounded-xl space-y-2">
-                <h4 className="text-xs font-bold text-red-900 uppercase tracking-wider flex items-center gap-2">
-                  <ShieldAlert className="w-4 h-4 text-red-600" />
+              <div className="p-4 bg-amber-50/60 border border-amber-200/80 rounded-xl space-y-2">
+                <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-amber-600" />
                   Lo que la Policía NO Puede Hacer
                 </h4>
                 <ul className="space-y-1.5 text-xs text-slate-700">
                   {queryResult.explanation.whatPoliceCannotDo.map((item, idx) => (
                     <li key={idx} className="flex items-start gap-2">
-                      <span className="text-red-600 font-bold">•</span>
+                      <span className="text-amber-600 font-bold">•</span>
                       <span>{item}</span>
                     </li>
                   ))}
@@ -658,7 +783,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
 
                       <button
                         onClick={() => handleSpeakPhrase(phraseObj.phrase, idx)}
-                        className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium text-xs flex items-center gap-1.5 transition-all"
+                        className="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs flex items-center gap-1.5 transition-all"
                       >
                         <Volume2 className={`w-3.5 h-3.5 ${playingPhraseIndex === idx ? 'animate-bounce text-yellow-300' : ''}`} />
                         <span>{playingPhraseIndex === idx ? 'Reproduciendo...' : 'Escuchar'}</span>
@@ -669,79 +794,67 @@ export const QueryModule: React.FC<QueryModuleProps> = ({ onSaveItem, onOpenAudi
               ))}
             </div>
           </div>
-
-          {/* Legal References (RAG Sources) */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              Sustento en Normativa Oficial Peruana (RAG Context)
-            </h3>
-
-            <div className="space-y-2">
-              {queryResult.legalReferences.map((ref, idx) => (
-                <div key={idx} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-slate-900">{ref.code || ref.document}</span>
-                      <span className="bg-slate-200 text-slate-700 font-semibold text-[10px] px-1.5 py-0.5 rounded">
-                        {ref.article}
-                      </span>
-                      <span className="bg-emerald-100 text-emerald-800 font-bold text-[10px] px-1.5 py-0.5 rounded">
-                        {ref.version || 'Vigente'}
-                      </span>
-                    </div>
-                    <p className="text-slate-600 mt-1">{ref.summary}</p>
-                  </div>
-
-                  {ref.officialUrl && (
-                    <a
-                      href={ref.officialUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold text-xs flex items-center gap-1 shrink-0 self-start md:self-center"
-                    >
-                      <span>Texto Oficial</span>
-                      <ExternalLink className="w-3.5 h-3.5 text-slate-600" />
-                    </a>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Derivation Channels & Hotlines */}
-          <div className="bg-amber-50/70 border border-amber-200/90 rounded-2xl p-5 shadow-xs space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
-              <PhoneCall className="w-4 h-4 text-amber-700" />
-              Canales Oficiales de Derivación y Reclamo Inmediato
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-              {queryResult.derivationChannels.map((channel, idx) => (
-                <div key={idx} className="p-3 bg-white rounded-xl border border-amber-200/80 flex items-center justify-between">
-                  <div>
-                    <div className="font-bold text-slate-900">{channel.entity}</div>
-                    <div className="text-slate-600 text-[11px]">{channel.purpose}</div>
-                  </div>
-                  <a
-                    href={`tel:${channel.phone.replace(/\D/g, '')}`}
-                    className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-1 shadow-xs"
-                  >
-                    <PhoneCall className="w-3.5 h-3.5" />
-                    <span>{channel.phone}</span>
-                  </a>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Disclaimer Footer */}
-          <div className="p-4 bg-slate-100 rounded-xl border border-slate-200 text-[11px] text-slate-500 flex items-start gap-2">
-            <HelpCircle className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-            <p>{queryResult.limitations}</p>
-          </div>
         </div>
       )}
+
+      {/* Casos Frecuentes (Horizontal / Grid of Cards) */}
+      <div className="space-y-4 pt-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">
+              Casos frecuentes de intervención policial
+            </h2>
+            <p className="text-xs text-slate-500">
+              Selecciona una situación común para consultar tus derechos rápidamente
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {FREQUENT_SCENARIOS.map((sc) => {
+            const getIcon = (iconName: string) => {
+              switch (iconName) {
+                case 'CreditCard': return CreditCard;
+                case 'Smartphone': return Smartphone;
+                case 'Clock': return Clock;
+                case 'Globe': return Globe;
+                default: return ShieldCheck;
+              }
+            };
+            const ScenarioIcon = getIcon(sc.iconName);
+            return (
+              <div
+                key={sc.id}
+                onClick={() => {
+                  setInputText(sc.userPrompt);
+                  setInputMode('text');
+                  inputAreaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }}
+                className="bg-white border border-slate-200/90 rounded-[20px] p-5 shadow-xs hover:border-sky-300 hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-3 group"
+              >
+                <div className="space-y-3">
+                  <div className="w-10 h-10 rounded-[14px] bg-sky-50 text-sky-600 border border-sky-100 flex items-center justify-center group-hover:bg-sky-500 group-hover:text-white transition-colors">
+                    <ScenarioIcon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-xs group-hover:text-sky-700 transition-colors">
+                      {sc.title}
+                    </h3>
+                    <p className="text-slate-500 text-[11px] mt-1 line-clamp-2 leading-relaxed">
+                      {sc.summary}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center text-[11px] font-bold text-sky-600 group-hover:text-sky-700 gap-1 pt-1">
+                  <span>Consultar este caso</span>
+                  <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };

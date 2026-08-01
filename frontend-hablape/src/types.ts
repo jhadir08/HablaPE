@@ -75,7 +75,7 @@ export interface CorpusArticle {
   id: string;
   documentTitle: string;
   code: string; // e.g. "D.S. N° 012-2025-IN" or "CPP Art. 205"
-  category: 'Control de Identidad' | 'Garantías Constitucionales' | 'Atribuciones Policiales' | 'Derechos Humanos';
+  category: string;
   articleNumber: string;
   title: string;
   content: string;
@@ -85,7 +85,13 @@ export interface CorpusArticle {
   isVigente: boolean;
   supersedes?: string;
   officialUrl: string;
+  spijUrl?: string;
+  elPeruanoUrl?: string;
   tags: string[];
+  citizenSummary?: string;
+  whenUsed?: string[];
+  relatedCases?: string[];
+  faqs?: { question: string; answer: string }[];
 }
 
 export interface FrequentScenario {
@@ -101,8 +107,14 @@ export interface FrequentScenario {
 
 export interface SavedItem {
   id: string;
-  type: 'query' | 'article' | 'phrase';
+  type: 'query' | 'article' | 'phrase' | 'download';
   title: string;
   timestamp: string;
+  isFavorite?: boolean;
+  confidenceLevel?: string;
+  summary?: string;
+  articleCode?: string;
+  downloadUrl?: string;
+  fileSize?: string;
   data: any;
 }
