@@ -1,0 +1,49 @@
+name: API CI
+
+on:
+  pull_request:
+    paths:
+      - "api/**"
+      - "corpus/**"
+      - "eval/**"
+      - ".github/workflows/api-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "api/**"
+      - "corpus/**"
+      - "eval/**"
+      - ".github/workflows/api-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -r requirements.txt pip-audit
+      - run: pip-audit -r requirements.txt
+      - run: python -m compileall -q app
+      - run: python -m unittest discover -s tests -v
+        env:
+          PYTHONPATH: ${{ github.workspace }}/api
+          HABLAPE_ENV: test
+          HABLAPE_MODEL_PROVIDER: rules
+          HABLAPE_TRACE_PROVIDER: memory
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f api/Dockerfile -t hablape-api:test .

@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "notice": "Datos íntegramente ficticios para demostración. No usar como documento real.",
+  "fixtures": [
+    {
+      "id": "acta_demo_001",
+      "type": "acta_control_identidad",
+      "is_synthetic": true,
+      "data": {
+        "persona": "PERSONA DEMO",
+        "fecha": "2026-07-15",
+        "hora_inicio": "18:20",
+        "hora_fin": "18:47",
+        "dependencia": "COMISARÍA DEMO",
+        "motivo_registrado": "Verificación de identidad en zona de incidencia",
+        "observacion": "La extracción mostrada en la interfaz es simulada."
+      }
+    },
+    {
+      "id": "boleta_demo_001",
+      "type": "comprobante_compra",
+      "is_synthetic": true,
+      "data": {
+        "proveedor": "TIENDA DEMO S.A.C.",
+        "fecha": "2026-07-10",
+        "producto": "Audífonos inalámbricos",
+        "importe_pen": 149.9,
+        "pedido": "DEMO-2048",
+        "observacion": "La extracción mostrada en la interfaz es simulada."
+      }
+    }
+  ]
+}
+

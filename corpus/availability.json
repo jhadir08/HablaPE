@@ -1,0 +1,31 @@
+{
+  "checked_at": "2026-07-29",
+  "summary": {
+    "manifest_documents": 7,
+    "local_files_available": 7,
+    "hashes_verified": 7,
+    "journey_documents": 5,
+    "compliance_documents": 2,
+    "evaluation_scenarios": 12,
+    "production_ready": false
+  },
+  "infrastructure": {
+    "google_cloud_public_services": "documented_available",
+    "local_gcloud_cli": "not_available",
+    "project_credentials": "not_available",
+    "gpu_quota": "not_verifiable",
+    "region_availability": "not_verifiable",
+    "budget_estimate": "not_verifiable_without_usage_profile",
+    "speech_to_text_note": "Chirp 3 language list reviewed did not declare es-PE; validate a supported Spanish locale with Peruvian audio or use an STT model that declares es-PE."
+  },
+  "dataset_readiness": {
+    "official_source_documents": "minimum_demo_set_available",
+    "structured_chunks": "minimum_demo_set_available",
+    "synthetic_fixtures": "minimum_demo_set_available",
+    "labeled_evaluation_data": "insufficient",
+    "real_user_data": "intentionally_absent",
+    "human_legal_review": "required",
+    "target_gap": "Plan asks for at least 40 scenarios per journey; 6 per journey are currently included."
+  }
+}
+

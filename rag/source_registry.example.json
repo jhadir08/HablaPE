@@ -1,0 +1,11 @@
+{
+  "reviewed_at": "YYYY-MM-DD",
+  "reviewed_by": "responsable de revisión jurídica",
+  "documents": {
+    "DRIVE_FILE_ID": {
+      "journey": "identidad",
+      "is_official": true,
+      "official_url": "https://www.gob.pe/institucion/..."
+    }
+  }
+}

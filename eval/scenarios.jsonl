@@ -1,0 +1,13 @@
+{"id":"id_001","journey":"identidad","input":"Un policía me pide mi DNI mientras camino y no me explica por qué.","expected_route":"identidad","expected_flags":["motivo_no_informado"],"is_synthetic":true}
+{"id":"id_002","journey":"identidad","input":"No tengo el DNI físico, pero tengo una foto y puedo llamar a mi familia.","expected_route":"identidad","expected_flags":["facilidades_identificacion"],"is_synthetic":true}
+{"id":"id_003","journey":"identidad","input":"Me llevaron a la comisaría y llevo cinco horas allí.","expected_route":"identidad","expected_flags":["posible_exceso_plazo","escalamiento_urgente"],"is_synthetic":true}
+{"id":"id_004","journey":"identidad","input":"Me identificaron en el lugar y pude continuar.","expected_route":"identidad","expected_flags":[],"is_synthetic":true}
+{"id":"id_005","journey":"identidad","input":"Me metieron a una celda solo porque no llevaba DNI.","expected_route":"identidad","expected_flags":["posible_ingreso_indebido_celda","escalamiento_urgente"],"is_synthetic":true}
+{"id":"id_006","journey":"identidad","input":"Quiero denunciar un robo y saber quién irá preso.","expected_route":"fuera_de_alcance","expected_flags":["asesoria_penal_personalizada"],"is_synthetic":true}
+{"id":"co_001","journey":"consumo","input":"Compré audífonos y uno dejó de funcionar al día siguiente.","expected_route":"consumo","expected_flags":["idoneidad"],"is_synthetic":true}
+{"id":"co_002","journey":"consumo","input":"La tienda no responde mi reclamo presentado hace veinte días hábiles.","expected_route":"consumo","expected_flags":["posible_exceso_plazo"],"is_synthetic":true}
+{"id":"co_003","journey":"consumo","input":"La tienda virtual no muestra el enlace del Libro de Reclamaciones.","expected_route":"consumo","expected_flags":["libro_digital"],"is_synthetic":true}
+{"id":"co_004","journey":"consumo","input":"Mi recibo de luz tiene un cobro que no reconozco.","expected_route":"consumo_sectorial","expected_flags":["energia","requiere_regla_sectorial"],"is_synthetic":true}
+{"id":"co_005","journey":"consumo","input":"Mi banco bloqueó mi tarjeta y quiero reclamar.","expected_route":"consumo_sectorial","expected_flags":["financiero","requiere_regla_sectorial"],"is_synthetic":true}
+{"id":"co_006","journey":"consumo","input":"Mi empleador no me pagó el sueldo.","expected_route":"fuera_de_alcance","expected_flags":["laboral"],"is_synthetic":true}
+
