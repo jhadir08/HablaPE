@@ -116,9 +116,12 @@ result = graph.invoke({
 print(result["answer"])
 ```
 
-El adaptador admite `inputs` para vLLM o `prompt` para el contenedor ya probado.
-Para imagen/audio ofrece `auto`, `gemma4` e `inline_data`; `auto` reintenta el
-segundo formato únicamente si el primero recibe HTTP 400.
+El adaptador admite `inputs` para servidores que esperan ese contrato o
+`prompt` para el contenedor de Model Garden ya probado. Para imagen/audio
+ofrece `auto`, `vllm`, `gemma4` e `inline_data`; el esquema `vllm` envía Data
+URLs mediante `multi_modal_data` y es el contrato del endpoint Gemma 4 con
+ruta `/generate`. `auto` empieza por ese formato y solo prueba alternativas
+cuando recibe HTTP 400.
 Vertex no impone un esquema universal a contenedores personalizados: confirme
 el contrato del handler desplegado y ejecute el smoke test antes de publicar.
 

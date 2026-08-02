@@ -100,7 +100,7 @@ Variables de producción:
 - `HABLAPE_GEMMA_ENDPOINT_ID`
 - `HABLAPE_GEMMA_REQUEST_SCHEMA=prompt|vllm`
 - `HABLAPE_GEMMA_PROMPT_FORMAT=gemma4|gemma3|plain`
-- `HABLAPE_GEMMA_MEDIA_SCHEMA=auto|gemma4|inline_data`
+- `HABLAPE_GEMMA_MEDIA_SCHEMA=auto|vllm|gemma4|inline_data`
 - `HABLAPE_GEMMA_TIMEOUT_SECONDS=30`
 - `HABLAPE_GEMMA_MAX_OUTPUT_TOKENS=768`
 - `HABLAPE_VECTOR_COLLECTION_ID`
@@ -116,7 +116,11 @@ Construir desde la raíz:
 docker build -f api/Dockerfile -t hablape-api .
 ```
 
-El esquema de imagen de un endpoint personalizado de Vertex depende del
-contenedor de predicción. El audio no usa ese contrato: se procesa por
-Speech-to-Text V2 y `/v1/orientations` rechaza audio sin transcribir.
+El endpoint Gemma 4 desplegado desde Model Garden con vLLM y ruta `/generate`
+usa `HABLAPE_GEMMA_REQUEST_SCHEMA=prompt` junto con
+`HABLAPE_GEMMA_MEDIA_SCHEMA=vllm`. La imagen se envía como Data URL dentro de
+`multi_modal_data.image`; el navegador la redimensiona y comprime antes de la
+llamada para respetar el límite de carga de `predict`. El audio no usa ese
+contrato en la interfaz: se procesa por Speech-to-Text V2 y
+`/v1/orientations` rechaza audio sin transcribir.
 

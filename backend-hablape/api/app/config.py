@@ -91,9 +91,15 @@ class Settings:
             raise ValueError(
                 "HABLAPE_GEMMA_REQUEST_SCHEMA debe ser prompt o vllm."
             )
-        if gemma_media_schema not in {"auto", "gemma4", "inline_data"}:
+        if gemma_media_schema not in {
+            "auto",
+            "vllm",
+            "gemma4",
+            "inline_data",
+        }:
             raise ValueError(
-                "HABLAPE_GEMMA_MEDIA_SCHEMA debe ser auto, gemma4 o inline_data."
+                "HABLAPE_GEMMA_MEDIA_SCHEMA debe ser auto, vllm, gemma4 o "
+                "inline_data."
             )
         if gemma_prompt_format not in {"gemma4", "gemma3", "plain"}:
             raise ValueError(
@@ -162,7 +168,7 @@ class Settings:
             speech_model=os.getenv("HABLAPE_SPEECH_MODEL", "chirp_3"),
             speech_language_codes=speech_language_codes,
             max_image_bytes=int(
-                os.getenv("HABLAPE_MAX_IMAGE_BYTES", str(5 * 1024 * 1024))
+                os.getenv("HABLAPE_MAX_IMAGE_BYTES", str(850 * 1024))
             ),
             max_audio_bytes=int(
                 os.getenv("HABLAPE_MAX_AUDIO_BYTES", str(8 * 1024 * 1024))

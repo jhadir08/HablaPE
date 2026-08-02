@@ -332,7 +332,7 @@ app.post("/api/query", async (req, res) => {
 
   let image: ParsedMedia | undefined;
   try {
-    image = mode === "image" ? parseImage(imageBase64, 5 * 1024 * 1024) : undefined;
+    image = mode === "image" ? parseImage(imageBase64, 850 * 1024) : undefined;
   } catch (error) {
     if (error instanceof BackendRequestError) {
       return res.status(error.status).json({

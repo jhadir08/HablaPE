@@ -86,7 +86,7 @@ class GemmaVertexEndpoint(BaseChatModel):
                 "HABLAPE_GEMMA_REQUEST_SCHEMA debe ser prompt o vllm."
             )
         media_schemas = (
-            ["gemma4", "inline_data"]
+            ["vllm", "gemma4", "inline_data"]
             if media and self.media_schema == "auto"
             else [self.media_schema]
         )
@@ -130,16 +130,24 @@ class GemmaVertexEndpoint(BaseChatModel):
             (message.type, str(message.content)) for message in messages
         ]
         if media:
-            placeholders = " ".join(
-                "<|image|>" if item.kind == "image" else "<|audio|>"
-                for item in media
+            image_placeholders = " ".join(
+                "<|image|>" for item in media if item.kind == "image"
+            )
+            audio_placeholders = " ".join(
+                "<|audio|>" for item in media if item.kind == "audio"
             )
             for index in range(len(entries) - 1, -1, -1):
                 role, content = entries[index]
                 if role == "human":
+                    parts = []
+                    if image_placeholders:
+                        parts.append(image_placeholders)
+                    parts.append(content)
+                    if audio_placeholders:
+                        parts.append(audio_placeholders)
                     entries[index] = (
                         role,
-                        f"{content}\n\nENTRADA MULTIMODAL:\n{placeholders}",
+                        "\n\n".join(parts),
                     )
                     break
 
@@ -214,13 +222,12 @@ class GemmaVertexEndpoint(BaseChatModel):
 
     @staticmethod
     def _add_media_placeholders(prompt: str, media: list[MediaPart]) -> str:
-        placeholders: list[str] = []
-        for item in media:
-            token = "<|image|>" if item.kind == "image" else "<|audio|>"
-            placeholders.append(token)
-        if not placeholders:
+        images = ["<|image|>" for item in media if item.kind == "image"]
+        audios = ["<|audio|>" for item in media if item.kind == "audio"]
+        if not images and not audios:
             return prompt
-        return f"{prompt}\n\nENTRADA MULTIMODAL:\n{' '.join(placeholders)}"
+        parts = [*images, prompt, *audios]
+        return "\n\n".join(parts)
 
     def _media_payload(
         self,
@@ -230,6 +237,19 @@ class GemmaVertexEndpoint(BaseChatModel):
         schema: str | None = None,
     ) -> dict[str, Any]:
         selected_schema = schema or self.media_schema
+        if selected_schema == "vllm":
+            multimodal_data: dict[str, Any] = {}
+            for kind in ("image", "audio"):
+                values = [
+                    f"data:{item.mime_type};base64,{item.data_base64}"
+                    for item in media
+                    if item.kind == kind
+                ]
+                if values:
+                    multimodal_data[kind] = (
+                        values[0] if len(values) == 1 else values
+                    )
+            return {"multi_modal_data": multimodal_data}
         if selected_schema == "gemma4":
             images = [
                 {
@@ -266,7 +286,8 @@ class GemmaVertexEndpoint(BaseChatModel):
             )
             return {"contents": [{"role": "user", "parts": parts}]}
         raise ValueError(
-            "HABLAPE_GEMMA_MEDIA_SCHEMA debe ser auto, gemma4 o inline_data."
+            "HABLAPE_GEMMA_MEDIA_SCHEMA debe ser auto, vllm, gemma4 o "
+            "inline_data."
         )
 
     @staticmethod

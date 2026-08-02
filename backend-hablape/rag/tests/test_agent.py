@@ -355,13 +355,13 @@ def test_audio_is_understood_before_agent_routes() -> None:
     assert result["answer"]["mode"] == "direct"
 
 
-def test_gemma4_media_contract_keeps_prompt_and_binary_separate() -> None:
+def test_vertex_vllm_media_contract_uses_data_url_and_image_first() -> None:
     model = GemmaVertexEndpoint(
         project_id="project-test",
         location="us-central1",
         endpoint_id="endpoint-test",
         request_schema="prompt",
-        media_schema="gemma4",
+        media_schema="vllm",
     )
     media = [
         MediaPart(
@@ -371,7 +371,7 @@ def test_gemma4_media_contract_keeps_prompt_and_binary_separate() -> None:
         )
     ]
 
-    payload = model._media_payload("Describe", media, schema="gemma4")
+    payload = model._media_payload("Describe", media, schema="vllm")
     prompt = model._add_media_placeholders("Describe", media)
     formatted = model._format_prompt(
         [
@@ -381,13 +381,63 @@ def test_gemma4_media_contract_keeps_prompt_and_binary_separate() -> None:
         media,
     )
 
-    assert payload["images"][0]["data"] == {"b64": "AA=="}
-    assert payload["images"][0]["mime_type"] == "image/png"
-    assert "<|image|>" in prompt
+    assert payload["multi_modal_data"]["image"] == (
+        "data:image/png;base64,AA=="
+    )
+    assert prompt.startswith("<|image|>\n\nDescribe")
     assert formatted.startswith("<|turn>system\n")
-    assert "<|turn>user\nDescribe la imagen." in formatted
-    assert "<|image|><turn|>" in formatted
+    assert "<|turn>user\n<|image|>\n\nDescribe la imagen." in formatted
     assert formatted.endswith("<|turn>model\n")
+
+
+def test_vertex_auto_media_schema_prefers_vllm_predict_contract(
+    monkeypatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    class FakePrediction:
+        predictions = ["La imagen contiene un documento."]
+
+    class FakeEndpoint:
+        def __init__(self, **_kwargs):
+            pass
+
+        def predict(self, *, instances, timeout):
+            captured["instances"] = instances
+            captured["timeout"] = timeout
+            return FakePrediction()
+
+    monkeypatch.setattr(
+        "hablape_rag.gemma_endpoint.aiplatform.Endpoint",
+        FakeEndpoint,
+    )
+    model = GemmaVertexEndpoint(
+        project_id="project-test",
+        location="us-central1",
+        endpoint_id="endpoint-test",
+        request_schema="prompt",
+        media_schema="auto",
+    )
+
+    response = model.invoke_multimodal(
+        [HumanMessage(content="Describe la imagen.")],
+        [
+            MediaPart(
+                kind="image",
+                mime_type="image/jpeg",
+                data_base64="AA==",
+            )
+        ],
+    )
+
+    assert response.content == "La imagen contiene un documento."
+    instance = captured["instances"][0]
+    assert instance["multi_modal_data"]["image"] == (
+        "data:image/jpeg;base64,AA=="
+    )
+    assert instance["prompt"].find("<|image|>") < instance["prompt"].find(
+        "Describe la imagen."
+    )
 
 
 def test_vertex_adapter_removes_an_echoed_prompt() -> None:

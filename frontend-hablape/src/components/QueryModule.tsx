@@ -34,6 +34,70 @@ import { I18N_STRINGS } from '../data/i18n';
 import { FREQUENT_SCENARIOS } from '../data/legalCorpus';
 import heroIllustration from '../assets/images/hablape_hero_flat_illustration_1785604720032.jpg';
 
+const MAX_SOURCE_IMAGE_BYTES = 5 * 1024 * 1024;
+const VERTEX_IMAGE_TARGET_BYTES = 850 * 1024;
+const MAX_IMAGE_EDGE = 1920;
+
+const readAsDataUrl = (value: Blob): Promise<string> => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result));
+  reader.onerror = () => reject(new Error('No se pudo leer la imagen.'));
+  reader.readAsDataURL(value);
+});
+
+const loadBrowserImage = (file: File): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
+  const objectUrl = URL.createObjectURL(file);
+  const image = new Image();
+  image.onload = () => {
+    URL.revokeObjectURL(objectUrl);
+    resolve(image);
+  };
+  image.onerror = () => {
+    URL.revokeObjectURL(objectUrl);
+    reject(new Error('No se pudo decodificar la imagen.'));
+  };
+  image.src = objectUrl;
+});
+
+const canvasToJpeg = (canvas: HTMLCanvasElement, quality: number): Promise<Blob> =>
+  new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => blob ? resolve(blob) : reject(new Error('No se pudo optimizar la imagen.')),
+      'image/jpeg',
+      quality,
+    );
+  });
+
+const prepareImageForVertex = async (file: File): Promise<string> => {
+  if (file.size <= VERTEX_IMAGE_TARGET_BYTES) {
+    return readAsDataUrl(file);
+  }
+
+  const image = await loadBrowserImage(file);
+  let scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(image.naturalWidth, image.naturalHeight));
+
+  for (let resizeAttempt = 0; resizeAttempt < 5; resizeAttempt += 1) {
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('El navegador no pudo preparar la imagen.');
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    for (let quality = 0.9; quality >= 0.58; quality -= 0.08) {
+      const optimized = await canvasToJpeg(canvas, quality);
+      if (optimized.size <= VERTEX_IMAGE_TARGET_BYTES) {
+        return readAsDataUrl(optimized);
+      }
+    }
+    scale *= 0.82;
+  }
+
+  throw new Error('La imagen contiene demasiado detalle. Prueba una foto más cercana o recortada.');
+};
+
 interface QueryModuleProps {
   onSaveItem: (item: SavedItem) => void;
   onOpenAudit: () => void;
@@ -73,6 +137,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({
   const [isSaved, setIsSaved] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hasConsent, setHasConsent] = useState(false);
+  const [isPreparingImage, setIsPreparingImage] = useState(false);
 
   const quickPrompts = [
     'Me pararon en la calle y no llevo mi DNI físico',
@@ -182,26 +247,38 @@ export const QueryModule: React.FC<QueryModuleProps> = ({
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.currentTarget;
     const file = e.target.files?.[0];
     if (file) {
       if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
         setErrorMessage('La imagen debe ser JPG, PNG o WebP.');
-        e.target.value = '';
+        input.value = '';
         return;
       }
-      if (file.size > 5 * 1024 * 1024) {
+      if (file.size > MAX_SOURCE_IMAGE_BYTES) {
         setErrorMessage('La imagen no puede superar 5 MB.');
-        e.target.value = '';
+        input.value = '';
         return;
       }
-      setErrorMessage(null);
-      setSelectedFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFilePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        setIsPreparingImage(true);
+        setErrorMessage(null);
+        setSelectedFile(file);
+        setFilePreview(null);
+        setFilePreview(await prepareImageForVertex(file));
+      } catch (error) {
+        setSelectedFile(null);
+        setFilePreview(null);
+        input.value = '';
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : 'No se pudo preparar la imagen para analizarla.',
+        );
+      } finally {
+        setIsPreparingImage(false);
+      }
     }
   };
 
@@ -625,7 +702,7 @@ export const QueryModule: React.FC<QueryModuleProps> = ({
                     Sube una foto de tu DNI, Acta de Intervención o Documento Oficial
                   </p>
                   <p className="text-[11px] text-slate-500">
-                    Soporta JPG, PNG o WebP, hasta 5 MB
+                    JPG, PNG o WebP, hasta 5 MB. La imagen se optimiza antes de enviarse.
                   </p>
                 </label>
               </div>
@@ -689,13 +766,13 @@ export const QueryModule: React.FC<QueryModuleProps> = ({
 
             <button
               onClick={() => handleSubmit()}
-              disabled={isLoading || isTranscribing || !hasConsent || (!inputText.trim() && !filePreview)}
+              disabled={isLoading || isTranscribing || isPreparingImage || !hasConsent || (!inputText.trim() && !filePreview)}
               className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs md:text-sm flex items-center justify-center gap-2 shadow-md transition-all hover:scale-[1.01] cursor-pointer"
             >
-              {isLoading ? (
+              {isLoading || isPreparingImage ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>{t.analyzing}</span>
+                  <span>{isPreparingImage ? 'Optimizando imagen...' : t.analyzing}</span>
                 </>
               ) : (
                 <>
