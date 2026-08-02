@@ -191,3 +191,11 @@ Aunque el MVP se enfoca en el control de identidad policial, la arquitectura mod
 ## 11. Cierre
 
 HablaPE demuestra cómo el potencial de **Gemma 4**, combinado con una arquitectura RAG rigurosa y validación determinística, puede transformar el acceso a la justicia y la información pública en el Perú. Un sistema **confiable, transparente y verificable**, siempre respaldado en la norma oficial.
+
+## Licencia
+
+El código original de HablaPE se distribuye bajo la
+[Apache License 2.0](LICENSE).
+
+Los documentos oficiales, normas, marcas, imágenes, modelos y demás
+materiales de terceros conservan sus propias licencias y derechos aplicables.
