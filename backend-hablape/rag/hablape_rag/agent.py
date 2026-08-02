@@ -212,7 +212,7 @@ def _partial_json_explanation(value: str) -> str:
 
 
 _SECTION_PATTERN = re.compile(
-    r"(?im)^(EXPLICACI[ÓO]N|PUEDE HACER|NO PUEDE HACER|"
+    r"(?im)^(EXPLICACI[ÓO]N|EN PALABRAS SIMPLES|PUEDE HACER|NO PUEDE HACER|"
     r"QU[ÉE] PUEDE HACER|QU[ÉE] NO PUEDE HACER|QU[ÉE] HACER|PASOS|"
     r"FRASE(?:S)? [ÚU]TIL(?:ES)?|SIGUIENTE CONSULTA)\s*:\s*"
 )
@@ -238,6 +238,8 @@ def _sectioned_answer(value: str) -> dict[str, Any] | None:
         body = value[match.end() : end].strip()
         if "explicacion" in heading:
             key = "explanation"
+        elif "palabras simples" in heading:
+            key = "evidence_summary"
         elif "no puede hacer" in heading:
             key = "police_cannot_do"
         elif "puede hacer" in heading:
@@ -255,6 +257,9 @@ def _sectioned_answer(value: str) -> dict[str, Any] | None:
     return {
         "explanation": explanation,
         "next_actions": _section_items(sections.get("next_actions", "")),
+        "evidence_summary": _section_items(
+            sections.get("evidence_summary", "")
+        ),
         "police_can_do": _section_items(sections.get("police_can_do", "")),
         "police_cannot_do": _section_items(
             sections.get("police_cannot_do", "")
@@ -294,6 +299,7 @@ def _answer_payload(raw: str) -> dict[str, Any]:
         return {
             "explanation": cleaned,
             "next_actions": [],
+            "evidence_summary": [],
             "police_can_do": [],
             "police_cannot_do": [],
             "suggested_phrases": [],
@@ -303,6 +309,7 @@ def _answer_payload(raw: str) -> dict[str, Any]:
     explanation = str(parsed.get("explanation") or "").strip()
     list_fields = (
         "next_actions",
+        "evidence_summary",
         "police_can_do",
         "police_cannot_do",
         "suggested_phrases",
@@ -327,6 +334,7 @@ def _usable_answer(payload: dict[str, Any]) -> bool:
         str(item)
         for key in (
             "next_actions",
+            "evidence_summary",
             "police_can_do",
             "police_cannot_do",
             "suggested_phrases",
@@ -559,6 +567,7 @@ def build_hablape_graph(
                         "realmente exige una regla oficial, dilo expresamente. "
                         "Devuelve solamente JSON válido con este contrato: "
                         '{"explanation":"respuesta breve",'
+                        '"evidence_summary":[],'
                         '"police_can_do":[],"police_cannot_do":[],'
                         '"next_actions":["acción opcional"],'
                         '"suggested_phrases":[],'
@@ -592,6 +601,8 @@ def build_hablape_graph(
                         "una copia de los fragmentos. Devuelve solamente "
                         "JSON válido con este contrato: "
                         '{"explanation":"síntesis en lenguaje ciudadano",'
+                        '"evidence_summary":["idea de la evidencia en palabras '
+                        'cotidianas"],'
                         '"police_can_do":["facultad sustentada"],'
                         '"police_cannot_do":["límite sustentado"],'
                         '"next_actions":["paso concreto y prudente"],'
@@ -600,7 +611,11 @@ def build_hablape_graph(
                         'podría hacer después"}. Usa listas vacías para lo que no '
                         "esté sustentado. La explicación debe tener como máximo "
                         "180 palabras; máximo 3 elementos por lista. No presentes "
-                        "inferencias como si fueran texto de una norma."
+                        "inferencias como si fueran texto de una norma. En "
+                        "evidence_summary elimina ruido OCR, nombres de archivo, "
+                        "números de gráficos y texto repetido; consolida las ideas "
+                        "en máximo 3 puntos de 45 palabras cada uno. No menciones "
+                        "chunks, fragmentos ni 'la fuente dice'."
                     )
                 ),
                 HumanMessage(
@@ -612,13 +627,13 @@ def build_hablape_graph(
         try:
             generated = _answer_payload(_response_text(model.invoke(messages)))
             if (
-                not _usable_answer(generated)
-                and mode == "rag"
+                mode == "rag"
                 and not state.get("media")
+                and not _usable_answer(generated)
             ):
                 logger.warning(
-                    "Gemma devolvió una primera respuesta RAG no utilizable; "
-                    "se ejecutará un reintento compacto."
+                    "La primera respuesta RAG de Gemma no fue utilizable; se "
+                    "ejecutará un reintento compacto."
                 )
                 compact_parts = [
                     " ".join(str(doc.page_content).split())[:700]
@@ -633,7 +648,8 @@ def build_hablape_graph(
                     "No copies las fuentes, no uses JSON ni etiquetas técnicas. "
                     "Si una conclusión no está respaldada, indícalo. Usa exactamente "
                     "estos encabezados, dejando vacío lo no sustentado:\n"
-                    "EXPLICACIÓN:\nPUEDE HACER:\nNO PUEDE HACER:\n"
+                    "EXPLICACIÓN:\nEN PALABRAS SIMPLES:\n"
+                    "PUEDE HACER:\nNO PUEDE HACER:\n"
                     "QUÉ HACER:\nFRASE ÚTIL:\nSIGUIENTE CONSULTA:\n\n"
                     f"PREGUNTA DEL CIUDADANO: {question}\n\n{compact_context}"
                 )
@@ -646,6 +662,14 @@ def build_hablape_graph(
                     logger.warning(
                         "Gemma devolvió una segunda respuesta RAG no utilizable."
                     )
+            if _usable_answer(generated) and not generated.get(
+                "evidence_summary"
+            ):
+                explanation_words = str(generated["explanation"]).split()
+                compact_summary = " ".join(explanation_words[:45])
+                if len(explanation_words) > 45:
+                    compact_summary += "…"
+                generated["evidence_summary"] = [compact_summary]
         except Exception as exc:
             return {
                 "draft": {
@@ -659,6 +683,7 @@ def build_hablape_graph(
                 "mode": mode,
                 "explanation": generated["explanation"],
                 "next_actions": generated["next_actions"],
+                "evidence_summary": generated["evidence_summary"],
                 "police_can_do": generated["police_can_do"],
                 "police_cannot_do": generated["police_cannot_do"],
                 "suggested_phrases": generated["suggested_phrases"],
@@ -676,6 +701,11 @@ def build_hablape_graph(
             for item in draft.get("next_actions", [])
             if str(item).strip()
         ][:4]
+        evidence_summary = [
+            str(item).strip()
+            for item in draft.get("evidence_summary", [])
+            if str(item).strip()
+        ][:3]
         police_can_do = [
             str(item).strip()
             for item in draft.get("police_can_do", [])
@@ -696,6 +726,7 @@ def build_hablape_graph(
         ).strip()
         generated_values = [
             *next_actions,
+            *evidence_summary,
             *police_can_do,
             *police_cannot_do,
             *suggested_phrases,
@@ -750,6 +781,7 @@ def build_hablape_graph(
                 else "No se pudo producir una explicación clara y validada."
             ),
             "next_actions": next_actions if not errors else [],
+            "evidence_summary": evidence_summary if not errors else [],
             "police_can_do": police_can_do if not errors else [],
             "police_cannot_do": police_cannot_do if not errors else [],
             "suggested_phrases": suggested_phrases if not errors else [],

@@ -246,6 +246,11 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
             for item in answer.get("next_actions", [])
             if str(item).strip()
         ][:4]
+        evidence_summary = [
+            str(item).strip()
+            for item in answer.get("evidence_summary", [])
+            if str(item).strip()
+        ][:3]
         police_can_do = [
             str(item).strip()
             for item in answer.get("police_can_do", [])
@@ -267,6 +272,7 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
         validation_errors = list(result.get("validation_errors", []))
         generated_values = [
             *next_actions,
+            *evidence_summary,
             *police_can_do,
             *police_cannot_do,
             *suggested_phrases,
@@ -279,6 +285,7 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
             mode = "blocked"
             explanation = "No se pudo producir una explicación clara y validada."
             next_actions = []
+            evidence_summary = []
             police_can_do = []
             police_cannot_do = []
             suggested_phrases = []
@@ -360,6 +367,7 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
         output_values = [
             *facts,
             explanation,
+            *evidence_summary,
             *police_can_do,
             *police_cannot_do,
             *next_actions,
@@ -392,6 +400,7 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
             cursor += size
             return values
 
+        evidence_summary = translated_slice(len(evidence_summary))
         police_can_do = translated_slice(len(police_can_do))
         police_cannot_do = translated_slice(len(police_cannot_do))
         next_actions = translated_slice(len(next_actions))
@@ -480,6 +489,7 @@ class AdaptiveOrientationOrchestrator(OrientationOrchestrator):
                 official_rules=rules,
                 plain_explanation=explanation,
                 next_actions=next_actions,
+                evidence_summary=evidence_summary,
                 police_can_do=police_can_do,
                 police_cannot_do=police_cannot_do,
                 suggested_phrases=suggested_phrases,

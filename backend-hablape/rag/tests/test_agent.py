@@ -89,7 +89,9 @@ def test_structured_rag_answer_keeps_actions_separate_from_explanation() -> None
         [
             (
                 '{"explanation":"Puedes pedir que te indiquen el motivo del '
-                'control.","police_can_do":["Solicitar identificación."],'
+                'control.","evidence_summary":["La Policía puede pedir una '
+                'identificación para comprobar quién eres."],'
+                '"police_can_do":["Solicitar identificación."],'
                 '"police_cannot_do":["Exceder los límites de la intervención."],'
                 '"next_actions":["Pregunta el motivo con calma."],'
                 '"suggested_phrases":["¿Podría indicarme el motivo?"],'
@@ -110,6 +112,9 @@ def test_structured_rag_answer_keeps_actions_separate_from_explanation() -> None
     assert result["answer"]["explanation"].startswith("Puedes pedir")
     assert result["answer"]["next_actions"] == [
         "Pregunta el motivo con calma."
+    ]
+    assert result["answer"]["evidence_summary"] == [
+        "La Policía puede pedir una identificación para comprobar quién eres."
     ]
     assert result["answer"]["police_can_do"] == [
         "Solicitar identificación."
@@ -206,6 +211,8 @@ def test_compact_retry_parses_guidance_sections_without_json() -> None:
             (
                 "EXPLICACIÓN: La fuente permite orientar el control, pero no "
                 "resuelve todos los detalles del caso.\n"
+                "EN PALABRAS SIMPLES:\n- La identificación puede ser "
+                "solicitada durante un control.\n"
                 "PUEDE HACER:\n- Solicitar la identificación.\n"
                 "NO PUEDE HACER:\n- Exceder los límites aplicables.\n"
                 "QUÉ HACER:\n- Pregunta con calma el motivo.\n"
@@ -223,6 +230,9 @@ def test_compact_retry_parses_guidance_sections_without_json() -> None:
     assert result["answer"]["mode"] == "rag"
     assert result["answer"]["police_can_do"] == [
         "Solicitar la identificación."
+    ]
+    assert result["answer"]["evidence_summary"] == [
+        "La identificación puede ser solicitada durante un control."
     ]
     assert result["answer"]["next_actions"] == [
         "Pregunta con calma el motivo."

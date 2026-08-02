@@ -63,6 +63,7 @@ export interface QueryResponse {
     overview: string;
     citizenRights: string[];
     citizenDuties: string[];
+    evidenceSummary: string[];
     whatToDo: string[];
     whatPoliceCanDo: string[];
     whatPoliceCannotDo: string[];

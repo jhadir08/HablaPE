@@ -610,7 +610,7 @@ export const PipelineAuditModule: React.FC<ProfileModuleProps> = ({
   ],
   "explanation": {
     "overview": "...",
-    "citizenRights": ["..."]
+    "evidenceSummary": ["..."]
   },
   "suggestedPhrases": [
     { "phrase": "...", "purpose": "..." }

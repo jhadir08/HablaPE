@@ -160,6 +160,9 @@ class AdaptiveOrchestratorTests(unittest.TestCase):
                 "answer": {
                     "mode": "rag",
                     "explanation": "Respuesta limitada a la evidencia.",
+                    "evidence_summary": [
+                        "La Policía puede solicitar una identificación."
+                    ],
                     "police_can_do": ["Solicitar la identificación."],
                     "police_cannot_do": ["Exceder el alcance informado."],
                     "next_actions": ["Pregunta el motivo del control."],
@@ -189,6 +192,10 @@ class AdaptiveOrchestratorTests(unittest.TestCase):
 
         self.assertEqual(response.answer_mode.value, "rag_gemma")
         self.assertEqual([item.chunk_id for item in response.sources], ["chk-real"])
+        self.assertEqual(
+            response.blocks.evidence_summary,
+            ["La Policía puede solicitar una identificación."],
+        )
         self.assertEqual(
             response.blocks.police_can_do,
             ["Solicitar la identificación."],
@@ -232,6 +239,7 @@ class AdaptiveOrchestratorTests(unittest.TestCase):
                 "answer": {
                     "mode": "rag",
                     "explanation": "Explicación en español.",
+                    "evidence_summary": ["Resumen sencillo."],
                     "normalized_question": "¿La policía puede revisar mi IMEI?",
                 },
                 "validation_errors": [],
@@ -258,6 +266,7 @@ class AdaptiveOrchestratorTests(unittest.TestCase):
             "¿La policía puede revisar mi IMEI?",
         )
         self.assertEqual(response.blocks.plain_explanation, "EN: Explicación en español.")
+        self.assertEqual(response.blocks.evidence_summary, ["EN: Resumen sencillo."])
         self.assertEqual(response.blocks.official_rules, ["Texto oficial sin traducir."])
         self.assertEqual(response.sources[0].title, "Norma oficial en español")
         self.assertEqual(response.meta.language.value, "en")

@@ -21,6 +21,7 @@ const orientation: BackendOrientation = {
     official_rules: ["La identificación debe intentarse en el lugar."],
     plain_explanation: "Puedes preguntar el motivo del control.",
     next_actions: ["Pregunta con calma el motivo del control."],
+    evidence_summary: ["La Policía puede solicitar que te identifiques."],
     police_can_do: ["Solicitar que te identifiques."],
     police_cannot_do: ["Exceder los límites de la intervención."],
     suggested_phrases: ["¿Podría indicarme el motivo del control?"],
@@ -123,6 +124,8 @@ test("requests FastAPI and keeps generated answer separate from sources", async 
   });
 
   assert.equal(adapted.explanation.overview, orientation.blocks.plain_explanation);
+  assert.deepEqual(adapted.explanation.evidenceSummary, orientation.blocks.evidence_summary);
+  assert.deepEqual(adapted.explanation.citizenRights, []);
   assert.deepEqual(adapted.explanation.whatPoliceCanDo, orientation.blocks.police_can_do);
   assert.deepEqual(adapted.explanation.whatPoliceCannotDo, orientation.blocks.police_cannot_do);
   assert.equal(adapted.suggestedPhrases[0].phrase, orientation.blocks.suggested_phrases?.[0]);

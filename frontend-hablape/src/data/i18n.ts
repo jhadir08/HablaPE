@@ -29,6 +29,8 @@ export type UIStrings = {
   analyzing: string;
   rightsTitle: string;
   dutiesTitle: string;
+  evidenceSummaryTitle: string;
+  evidenceSummaryNotice: string;
   policeCanDoTitle: string;
   policeCannotDoTitle: string;
   whatToDoTitle: string;
@@ -71,6 +73,8 @@ export const I18N_STRINGS: Record<Language, UIStrings> = {
     analyzing: 'Analizando consulta...',
     rightsTitle: 'Evidencia oficial relevante',
     dutiesTitle: 'Tus deberes ciudadanos',
+    evidenceSummaryTitle: 'Las fuentes, en palabras simples',
+    evidenceSummaryNotice: 'Resumen redactado por Gemma a partir de los documentos recuperados. Las fuentes oficiales exactas aparecen más abajo.',
     policeCanDoTitle: 'Qué puede hacer la Policía',
     policeCannotDoTitle: 'Qué no puede hacer la Policía',
     whatToDoTitle: 'Recomendaciones de acción inmediata',
@@ -111,6 +115,8 @@ export const I18N_STRINGS: Record<Language, UIStrings> = {
     analyzing: 'Analyzing query...',
     rightsTitle: 'Relevant official evidence',
     dutiesTitle: 'Your citizen duties',
+    evidenceSummaryTitle: 'The sources, in plain language',
+    evidenceSummaryNotice: 'Summary drafted by Gemma from the retrieved documents. The exact official sources appear below.',
     policeCanDoTitle: 'What the police may do',
     policeCannotDoTitle: 'What the police may not do',
     whatToDoTitle: 'Recommended immediate actions',
@@ -151,6 +157,8 @@ export const I18N_STRINGS: Record<Language, UIStrings> = {
     analyzing: 'Tapukuyta qawachkan...',
     rightsTitle: 'Oficial kamachikuykuna',
     dutiesTitle: 'Runap ruwayninkuna',
+    evidenceSummaryTitle: 'Pukyukuna, mana sasachakuspalla',
+    evidenceSummaryNotice: "Gemmaqa tarisqa qillqakunamanta pisillapi sut'inchan. Oficial pukyukunaqa uraypim kachkan.",
     policeCanDoTitle: 'Policíapa ruwanan atisqan',
     policeCannotDoTitle: 'Policíapa mana ruwanan atisqan',
     whatToDoTitle: 'Imatataq ruwawaq',
@@ -191,6 +199,8 @@ export const I18N_STRINGS: Record<Language, UIStrings> = {
     analyzing: 'Jiskt’awi uñakipaski...',
     rightsTitle: 'Oficial kamanaka',
     dutiesTitle: 'Jaqin phuqhañanakapaj',
+    evidenceSummaryTitle: 'Phuqhawinaka, jasaki arunakana',
+    evidenceSummaryNotice: "Gemma ukaxa jikxatata qillqatanakat mä juk'a qhanañchi. Oficial phuqhawinakaxa aynachankiwa.",
     policeCanDoTitle: 'Policía kunsa luraspawa',
     policeCannotDoTitle: 'Policía kunsa jani lurkaspawa',
     whatToDoTitle: 'Kunas lurañama',

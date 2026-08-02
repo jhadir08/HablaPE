@@ -823,21 +823,38 @@ export const QueryModule: React.FC<QueryModuleProps> = ({
               </p>
             </div>
 
-            {/* The retrieved evidence remains visually separate from Gemma's analysis. */}
-            {queryResult.explanation.citizenRights.length > 0 && (
-              <div className="p-4 bg-emerald-50/60 border border-emerald-200/80 rounded-xl space-y-2">
-                <h4 className="text-xs font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  {t.rightsTitle}
-                </h4>
-                <ul className="space-y-1.5 text-xs text-slate-700">
-                  {queryResult.explanation.citizenRights.map((item, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <span className="text-emerald-600 font-bold">•</span>
-                      <span>{item}</span>
-                    </li>
+            {/* Gemma paraphrases the retrieved evidence; exact sources stay below. */}
+            {queryResult.explanation.evidenceSummary.length > 0 && (
+              <div className="p-5 bg-gradient-to-br from-emerald-50 to-teal-50/60 border border-emerald-200/80 rounded-xl space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-extrabold text-emerald-950">
+                      {t.evidenceSummaryTitle}
+                    </h4>
+                    <p className="mt-1 text-[11px] leading-relaxed text-emerald-800/80">
+                      {t.evidenceSummaryNotice}
+                    </p>
+                  </div>
+                </div>
+                <div className={`grid grid-cols-1 gap-3 ${
+                  queryResult.explanation.evidenceSummary.length >= 3
+                    ? 'md:grid-cols-3'
+                    : queryResult.explanation.evidenceSummary.length === 2
+                    ? 'md:grid-cols-2'
+                    : ''
+                }`}>
+                  {queryResult.explanation.evidenceSummary.map((item, idx) => (
+                    <div key={idx} className="bg-white/80 border border-emerald-100 rounded-lg p-3 flex items-start gap-2.5 shadow-xs">
+                      <span className="w-5 h-5 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        {idx + 1}
+                      </span>
+                      <p className="text-xs leading-relaxed text-slate-700">{item}</p>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
 

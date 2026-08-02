@@ -28,6 +28,7 @@ export type BackendOrientation = {
     official_rules: string[];
     plain_explanation: string;
     next_actions: string[];
+    evidence_summary?: string[];
     police_can_do?: string[];
     police_cannot_do?: string[];
     suggested_phrases?: string[];
@@ -235,8 +236,9 @@ export function adaptOrientationForFrontend(
     })),
     explanation: {
       overview: orientation.blocks.plain_explanation,
-      citizenRights: orientation.blocks.official_rules,
+      citizenRights: [],
       citizenDuties: [],
+      evidenceSummary: orientation.blocks.evidence_summary || [],
       whatToDo: orientation.blocks.next_actions,
       whatPoliceCanDo: orientation.blocks.police_can_do || [],
       whatPoliceCannotDo: orientation.blocks.police_cannot_do || [],
